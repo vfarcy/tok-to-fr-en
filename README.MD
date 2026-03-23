@@ -1,7 +1,7 @@
 
 # 🎯 Générateur JSONL Bidirectionnel pour Fine-tuning: Tokpisin ↔ Français
 
-Créez un dataset JSONL de haute qualité pour fine-tuner des modèles de traduction **tok ↔ fra** en exploitant les **chaînes de traduction indirectes** (tok → eng → fra).
+Finalité : Créer un dataset JSONL de haute qualité pour fine-tuner des modèles de traduction **tok ↔ fra** en exploitant les **chaînes de traduction indirectes** (tok → eng → fra).
 
 ## 🧠 Introduction: structure Tatoeba et chaînes indirectes
 
@@ -17,7 +17,7 @@ Le principe des **chaînes de traduction indirectes** est d'exploiter le graphe 
 - Cas direct: `tok -> fra`
 - Cas indirect: `tok -> eng -> fra`
 
-Concretement, si une phrase tokpisin est liee a une phrase anglaise, et que cette phrase anglaise est liee a une phrase francaise, on peut construire une paire `tok -> fra` meme sans lien direct initial. Ce mecanisme augmente fortement le nombre de paires utilisables pour le fine-tuning, tout en restant base sur des alignements humains existants dans Tatoeba.
+Concretement, si une phrase toki pona est liee a une phrase anglaise, et que cette phrase anglaise est liee a une phrase francaise, on peut construire une paire `tok -> fra` meme sans lien direct initial. Ce mecanisme augmente fortement le nombre de paires utilisables pour le fine-tuning, tout en restant base sur des alignements humains existants dans Tatoeba.
 
 ## 📋 Vue rapide
 
