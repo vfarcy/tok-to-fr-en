@@ -28,6 +28,7 @@ Vous avez demandé:
 | **generate_jsonl_advanced.py** | Génération configurable | CSV + paramètres CLI | JSONL personnalisé |
 | **analyze_jsonl.py** | Analyse du dataset | *.jsonl | Rapport + exemples |
 | **split_jsonl.py** | Partitionnement train/val/test | *.jsonl | Ensembles séparés |
+| **split_pedagogy_jsonl.py** | Split sans fuite du dataset pédagogique | pedagogy_dataset.jsonl | Ensembles groupés train/val/test |
 
 ### Documentation fournie
 
@@ -227,6 +228,7 @@ While not empty:
 - [ ] Charger training_data_train.jsonl pour fine-tuning
 - [ ] Utiliser training_data_val.jsonl pour validation
 - [ ] Tester sur training_data_test.jsonl
+- [ ] Pour le dataset pédagogique: `python split_pedagogy_jsonl.py pedagogy_dataset.jsonl`
 - [ ] Évaluer performance tok↔fra
 - [ ] Générer pour autres paires de langues si besoin
 

@@ -115,6 +115,11 @@
   - Mélange des données
   - Usage: `python split_jsonl.py training_data.jsonl --train 0.8 --val 0.1`
 
+- **split_pedagogy_jsonl.py**
+  - Partitionner `pedagogy_dataset.jsonl` sans fuite entre exemples proches
+  - Groupement par paire `fr/tok` reconstruite depuis `messages[]`
+  - Usage: `python split_pedagogy_jsonl.py pedagogy_dataset.jsonl --train 0.8 --val 0.1 --test 0.1`
+
 ### Validation
 - **validate_dataset.py**
   - Valide un fichier JSONL ligne par ligne contre `schema.json`
@@ -167,6 +172,7 @@
 ### Étape 0: Dataset Pédagogique (nouveau)
 - [ ] Générer le dataset : `python generate_pedagogical_dataset.py --output pedagogy_dataset.jsonl --depth 3 --max-samples 3000`
 - [ ] Valider le dataset : `python validate_dataset.py --jsonl pedagogy_dataset.jsonl`
+- [ ] Splitter sans fuite : `python split_pedagogy_jsonl.py pedagogy_dataset.jsonl`
 - [ ] Inspecter un exemple : `Get-Content pedagogy_dataset.jsonl -Head 1 | python -m json.tool`
 
 ### Étape 1: Compréhension
@@ -261,6 +267,9 @@ python split_jsonl.py training_data.jsonl
 
 # Personnalisé 70/15/15
 python split_jsonl.py training_data.jsonl --train 0.7 --val 0.15 --test 0.15
+
+# Pedagogique 80/10/10 sans fuite
+python split_pedagogy_jsonl.py pedagogy_dataset.jsonl
 ```
 
 ### Valider avant fine-tuning
@@ -345,6 +354,8 @@ pedagogy_dataset.jsonl
     ↓
 [validate_dataset.py] ← schema.json
     ↓
+[split_pedagogy_jsonl.py] (grouped 80/10/10)
+  ↓
 ✅ Ready for conversational fine-tuning!
 ```
 

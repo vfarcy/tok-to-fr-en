@@ -270,8 +270,8 @@ python validate_dataset.py --jsonl pedagogy_dataset.jsonl --schema schema.json
 #### Étape 2 — Découper en train / val / test
 
 ```powershell
-# Découpage 80 % / 10 % / 10 % (par défaut)
-python split_jsonl.py pedagogy_dataset.jsonl
+# Découpage 80 % / 10 % / 10 % sans fuite entre paires proches
+python split_pedagogy_jsonl.py pedagogy_dataset.jsonl
 
 # Résultat :
 #   pedagogy_dataset_train.jsonl   (80% — entraînement)
@@ -279,8 +279,10 @@ python split_jsonl.py pedagogy_dataset.jsonl
 #   pedagogy_dataset_test.jsonl    (10% — évaluation finale)
 
 # Découpage personnalisé (ex. 90/5/5)
-python split_jsonl.py pedagogy_dataset.jsonl --train 0.9 --val 0.05 --test 0.05
+python split_pedagogy_jsonl.py pedagogy_dataset.jsonl --train 0.9 --val 0.05 --test 0.05
 ```
+
+Pour le dataset pédagogique, éviter `split_jsonl.py` qui mélange simplement les lignes. Le script `split_pedagogy_jsonl.py` reconstruit la paire `fr/tok` depuis `messages[]` et garde toutes les variantes proches dans le même split.
 
 #### Étape 3 — Lancer le fine-tuning
 
@@ -307,7 +309,7 @@ Utiliser `pedagogy_dataset_train.jsonl` + `pedagogy_dataset_val.jsonl` avec le m
     ├── schema.json                       ← Schéma JSON strict de validation
     ├── pedagogy_dataset_quick.jsonl      ← Échantillon rapide pour tests
     │
-    └── Splits 80/10/10 (après split_jsonl.py):
+    └── Splits 80/10/10 (après split_pedagogy_jsonl.py):
         ├── pedagogy_dataset_train.jsonl  ← ~2 400 dialogues (entraînement)
         ├── pedagogy_dataset_val.jsonl    ← ~300 dialogues (validation)
         └── pedagogy_dataset_test.jsonl  ← ~300 dialogues (évaluation finale)
@@ -322,6 +324,7 @@ Utiliser `pedagogy_dataset_train.jsonl` + `pedagogy_dataset_val.jsonl` avec le m
 ├── generate_jsonl_advanced.py         ← Générer (options CLI avancées)
 ├── generate_pedagogical_dataset.py    ← Générer le dataset pédagogique conversationnel
 ├── analyze_jsonl.py                   ← Analyser & valider
+├── split_pedagogy_jsonl.py            ← Split groupé sans fuite pour le dataset pédagogique
 ├── split_jsonl.py                     ← Partitionner train/val/test
 ├── validate_dataset.py               ← Valider le dataset pédagogique contre schema.json
 └── integration_guide.py               ← Exemples fine-tuning (OpenAI, HF, etc.)
