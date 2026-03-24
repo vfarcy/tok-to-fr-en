@@ -109,9 +109,9 @@ Un modèle fine-tuné sur ce dataset doit se comporter comme un professeur :
 
 ### Génération du dataset
 
-```powershell
-# Dataset de production (3000 dialogues)
-python generate_pedagogical_dataset.py --output pedagogy_dataset.jsonl --depth 3 --max-samples 3000
+```bash
+# Dataset de production (exemple: 12,000 dialogues)
+python generate_pedagogical_dataset.py --output pedagogy_dataset.jsonl --depth 3 --max-samples 12000
 
 # Itération rapide (scan partiel, 200 exemples)
 python generate_pedagogical_dataset.py --output pedagogy_dataset_quick.jsonl --depth 2 --max-source-sentences 2000 --max-samples 200
@@ -233,7 +233,7 @@ assistant: Traduction: sina pona. Explication: on garde la phrase simple et dire
 
 ### Validation du dataset
 
-```powershell
+```bash
 # Installer la dépendance
 pip install jsonschema
 
@@ -256,7 +256,7 @@ Une fois `pedagogy_dataset.jsonl` généré, suivre ce workflow :
 
 #### Étape 1 — Valider le dataset
 
-```powershell
+```bash
 # Installer la dépendance (une seule fois)
 pip install jsonschema
 
@@ -269,7 +269,7 @@ python validate_dataset.py --jsonl pedagogy_dataset.jsonl --schema schema.json
 
 #### Étape 2 — Découper en train / val / test
 
-```powershell
+```bash
 # Découpage 80 % / 10 % / 10 % sans fuite entre paires proches
 python split_pedagogy_jsonl.py pedagogy_dataset.jsonl
 
@@ -284,9 +284,30 @@ python split_pedagogy_jsonl.py pedagogy_dataset.jsonl --train 0.9 --val 0.05 --t
 
 Pour le dataset pédagogique, éviter `split_jsonl.py` qui mélange simplement les lignes. Le script `split_pedagogy_jsonl.py` reconstruit la paire `fr/tok` depuis `messages[]` et garde toutes les variantes proches dans le même split.
 
-#### Étape 3 — Lancer le fine-tuning
+#### Étape 3 — Lancer le fine-tuning local (Qwen2.5-1.5B)
 
-Utiliser `pedagogy_dataset_train.jsonl` + `pedagogy_dataset_val.jsonl` avec le modèle cible (Mistral 7B Instruct recommandé).
+```bash
+# Dépendances fine-tuning
+pip install -r requirements-finetune.txt
+
+# Entraînement LoRA local (RTX 4070 12GB)
+python train_qwen25_lora.py \
+  --train-file pedagogy_dataset_train.jsonl \
+  --val-file pedagogy_dataset_val.jsonl \
+  --output-dir qwen25-1.5b-tokipona-lora \
+  --epochs 3 \
+  --batch-size 1 \
+  --grad-accum 16 \
+  --max-length 512 \
+  --save-steps 50
+
+# Reprendre après interruption (exemple)
+python train_qwen25_lora.py \
+  --train-file pedagogy_dataset_train.jsonl \
+  --val-file pedagogy_dataset_val.jsonl \
+  --output-dir qwen25-1.5b-tokipona-lora \
+  --resume-from-checkpoint qwen25-1.5b-tokipona-lora/checkpoint-50
+```
 
 ---
 
@@ -310,9 +331,9 @@ Utiliser `pedagogy_dataset_train.jsonl` + `pedagogy_dataset_val.jsonl` avec le m
     ├── pedagogy_dataset_quick.jsonl      ← Échantillon rapide pour tests
     │
     └── Splits 80/10/10 (après split_pedagogy_jsonl.py):
-        ├── pedagogy_dataset_train.jsonl  ← ~2 400 dialogues (entraînement)
-        ├── pedagogy_dataset_val.jsonl    ← ~300 dialogues (validation)
-        └── pedagogy_dataset_test.jsonl  ← ~300 dialogues (évaluation finale)
+        ├── pedagogy_dataset_train.jsonl  ← 80% des dialogues (entraînement)
+        ├── pedagogy_dataset_val.jsonl    ← 10% des dialogues (validation)
+        └── pedagogy_dataset_test.jsonl  ← 10% des dialogues (évaluation finale)
 ```
 
 ### Scripts Python
@@ -326,6 +347,7 @@ Utiliser `pedagogy_dataset_train.jsonl` + `pedagogy_dataset_val.jsonl` avec le m
 ├── analyze_jsonl.py                   ← Analyser & valider
 ├── split_pedagogy_jsonl.py            ← Split groupé sans fuite pour le dataset pédagogique
 ├── split_jsonl.py                     ← Partitionner train/val/test
+├── train_qwen25_lora.py               ← Fine-tuning LoRA local Qwen2.5-1.5B
 ├── validate_dataset.py               ← Valider le dataset pédagogique contre schema.json
 └── integration_guide.py               ← Exemples fine-tuning (OpenAI, HF, etc.)
 ```
@@ -446,14 +468,14 @@ python integration_guide.py
 | Étape | Commande | Prérequis |
 |---|---|---|
 | **1. Valider** | `python validate_dataset.py --jsonl pedagogy_dataset.jsonl --schema schema.json` | `pip install jsonschema` |
-| **2. Découper** | `python split_jsonl.py pedagogy_dataset.jsonl` | — |
-| **3. Fine-tuner** | Utiliser `pedagogy_dataset_train.jsonl` + `pedagogy_dataset_val.jsonl` | Mistral 7B Instruct |
+| **2. Découper** | `python split_pedagogy_jsonl.py pedagogy_dataset.jsonl` | — |
+| **3. Fine-tuner** | Utiliser `pedagogy_dataset_train.jsonl` + `pedagogy_dataset_val.jsonl` | `pip install -r requirements-finetune.txt` |
 
-```powershell
+```bash
 # Workflow complet en 3 commandes
 pip install jsonschema
 python validate_dataset.py --jsonl pedagogy_dataset.jsonl --schema schema.json
-python split_jsonl.py pedagogy_dataset.jsonl
+python split_pedagogy_jsonl.py pedagogy_dataset.jsonl
 # → génère pedagogy_dataset_train.jsonl / _val.jsonl / _test.jsonl
 ```
 
@@ -463,12 +485,12 @@ python split_jsonl.py pedagogy_dataset.jsonl
 - [INDEX.md](INDEX.md) pour référence complète
 
 ### Pour explorer les données
-```powershell
+```bash
 # Voir les premières paires (dataset traduction)
-Get-Content training_data.jsonl -Head 5
+head -n 5 training_data.jsonl
 
 # Compter les enregistrements
-(Get-Content pedagogy_dataset.jsonl | Measure-Object -Line).Lines
+wc -l pedagogy_dataset.jsonl
 
 # Analyser la distribution des niveaux CECRL
 python -c "

@@ -47,6 +47,23 @@ dataset = load_dataset("json", data_files="training_data.jsonl")
 # ... continuer avec Transformers Trainer
 ```
 
+### 5. Fine-tuning local Qwen2.5-1.5B (GPU NVIDIA)
+```bash
+# Dépendances entraînement local
+pip install -r requirements-finetune.txt
+
+# Entraînement LoRA (réglage stable pour RTX 4070 12GB)
+python train_qwen25_lora.py \
+  --train-file pedagogy_dataset_train.jsonl \
+  --val-file pedagogy_dataset_val.jsonl \
+  --output-dir qwen25-1.5b-tokipona-lora \
+  --epochs 3 \
+  --batch-size 1 \
+  --grad-accum 16 \
+  --max-length 512 \
+  --save-steps 50
+```
+
 ---
 
 ## Ce que vous avez ✅
@@ -58,7 +75,7 @@ dataset = load_dataset("json", data_files="training_data.jsonl")
 | **Format** | JSONL standard (prêt pour fine-tuning) |
 | **Qualité** | Paires réelles de Tatoeba + chaînes indirectes |
 | **Bidirectionnel** | tok→fra ET fra→tok (50/50) |
-| **Scripts** | 5 scripts Python pour tout faire |
+| **Scripts** | Pipeline complet + entraînement local Qwen |
 | **Documentation** | 4 guides complets |
 
 ---

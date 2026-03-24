@@ -20,7 +20,7 @@
     },
     "sample_id": {
       "type": "string",
-      "pattern": "^L[0-9]{3}_[0-9]{4}$"
+      "pattern": "^L[0-9]{3}_[0-9]{4,5}$"
     },
     "lesson": {
       "type": "object",

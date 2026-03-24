@@ -120,6 +120,12 @@
   - Groupement par paire `fr/tok` reconstruite depuis `messages[]`
   - Usage: `python split_pedagogy_jsonl.py pedagogy_dataset.jsonl --train 0.8 --val 0.1 --test 0.1`
 
+- **train_qwen25_lora.py**
+  - Fine-tuning LoRA local pour `Qwen/Qwen2.5-1.5B-Instruct`
+  - Entrée: `pedagogy_dataset_train.jsonl` + `pedagogy_dataset_val.jsonl`
+  - Options utiles: `--save-steps`, `--resume-from-checkpoint`, `--load-in-4bit`
+  - Usage: `python train_qwen25_lora.py --train-file pedagogy_dataset_train.jsonl --val-file pedagogy_dataset_val.jsonl --output-dir qwen25-1.5b-tokipona-lora --batch-size 1 --grad-accum 16 --max-length 512 --save-steps 50`
+
 ### Validation
 - **validate_dataset.py**
   - Valide un fichier JSONL ligne par ligne contre `schema.json`
@@ -136,6 +142,15 @@
   - Exemples OpenAI, HuggingFace, PyTorch Lightning
   - Monitoring et évaluation
   - Validation pré-fine-tuning
+
+---
+
+## 🧪 Dépendances Fine-tuning Local
+
+- **requirements-finetune.txt**
+  - Dépendances entraînement local GPU: `torch`, `transformers`, `trl`, `peft`, `datasets`, `accelerate`
+  - `bitsandbytes` est optionnel (utile seulement avec `--load-in-4bit`)
+  - Installation: `pip install -r requirements-finetune.txt`
 
 ---
 
@@ -173,7 +188,9 @@
 - [ ] Générer le dataset : `python generate_pedagogical_dataset.py --output pedagogy_dataset.jsonl --depth 3 --max-samples 3000`
 - [ ] Valider le dataset : `python validate_dataset.py --jsonl pedagogy_dataset.jsonl`
 - [ ] Splitter sans fuite : `python split_pedagogy_jsonl.py pedagogy_dataset.jsonl`
-- [ ] Inspecter un exemple : `Get-Content pedagogy_dataset.jsonl -Head 1 | python -m json.tool`
+- [ ] Inspecter un exemple : `head -n 1 pedagogy_dataset.jsonl | python -m json.tool`
+- [ ] Installer dépendances fine-tuning : `pip install -r requirements-finetune.txt`
+- [ ] Lancer entraînement local : `python train_qwen25_lora.py --train-file pedagogy_dataset_train.jsonl --val-file pedagogy_dataset_val.jsonl --output-dir qwen25-1.5b-tokipona-lora --batch-size 1 --grad-accum 16 --max-length 512 --save-steps 50`
 
 ### Étape 1: Compréhension
 - [ ] Lire SYNTHESE_FINALE.md (5 min)
@@ -232,27 +249,27 @@ python generate_jsonl_advanced.py --depth 2
 ```
 
 ### Générer le dataset pédagogique
-```powershell
-# Dataset de production (3000 dialogues)
-python generate_pedagogical_dataset.py --output pedagogy_dataset.jsonl --depth 3 --max-samples 3000
+```bash
+# Dataset de production (exemple: 12000 dialogues)
+python generate_pedagogical_dataset.py --output pedagogy_dataset.jsonl --depth 3 --max-samples 12000
 
 # Itération rapide (200 dialogues, scan partiel)
 python generate_pedagogical_dataset.py --output pedagogy_dataset_quick.jsonl --depth 2 --max-source-sentences 2000 --max-samples 200
 
 # Paramètres complets
-python generate_pedagogical_dataset.py `
-  --sentences sentences.csv `
-  --links links.csv `
-  --output pedagogy_dataset.jsonl `
-  --depth 3 `
-  --max-samples 5000 `
-  --seed 42 `
-  --max-words-fr 8 `
+python generate_pedagogical_dataset.py \
+  --sentences sentences.csv \
+  --links links.csv \
+  --output pedagogy_dataset.jsonl \
+  --depth 3 \
+  --max-samples 5000 \
+  --seed 42 \
+  --max-words-fr 8 \
   --max-words-tok 12
 ```
 
 ### Valider le dataset pédagogique
-```powershell
+```bash
 # Validation standard
 python validate_dataset.py --jsonl pedagogy_dataset.jsonl --schema schema.json
 
