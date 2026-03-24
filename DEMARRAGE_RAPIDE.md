@@ -4,11 +4,11 @@
 
 ### 1. Vérifier le dataset (1 min)
 ```bash
-# Afficher le première paire
-Get-Content training_data.jsonl -Head 1
+# Afficher la première paire
+head -n 1 training_data.jsonl
 
 # Compter les paires
-(Get-Content training_data.jsonl | Measure-Object -Line).Lines
+wc -l training_data.jsonl
 ```
 
 Résultat attendu: **87,576 paires**

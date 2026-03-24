@@ -120,7 +120,11 @@ Cela **multiplie le nombre de paires** sans dupliquer les données sources.
 
 - Python 3.7+
 - Modules standard: `csv`, `json`, `argparse`, `time`
-- Aucune dépendance externe!
+- Dépendance externe: `jsonschema` (pour `validate_dataset.py` uniquement)
+
+```bash
+pip install -r requirements.txt
+```
 
 ## 🐛 Troubleshooting
 
