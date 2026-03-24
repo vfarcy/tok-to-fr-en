@@ -204,6 +204,7 @@ def build_french_toki_pairs(
 
     toki_ids = [sid for sid, s in sentences.items() if s["lang"] == "tok"]
     if max_source_sentences > 0:
+        random.shuffle(toki_ids)
         toki_ids = toki_ids[:max_source_sentences]
 
     total = len(toki_ids)

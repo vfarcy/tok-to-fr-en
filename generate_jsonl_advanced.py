@@ -11,7 +11,7 @@ Utilisation:
 import csv
 import json
 import argparse
-from collections import defaultdict
+from collections import defaultdict, deque
 import time
 
 class TranslationDataGenerator:
@@ -85,11 +85,11 @@ class TranslationDataGenerator:
             return set()
         
         results = set()
-        queue = [(start_id, 0)]
+        queue = deque([(start_id, 0)])
         visited = {(start_id, self.sentences[start_id]['lang'])}
         
         while queue:
-            current_id, depth = queue.pop(0)
+            current_id, depth = queue.popleft()
             
             if depth > self.max_depth:
                 continue

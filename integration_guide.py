@@ -20,6 +20,7 @@ Code:
 """
 
 def example_openai_finetuning():
+    import time
     from openai import OpenAI
     
     client = OpenAI()
@@ -61,6 +62,7 @@ def example_openai_finetuning():
         
         if job.status in ["succeeded", "failed"]:
             break
+        time.sleep(60)  # Éviter de spammer l'API OpenAI
     
     # Utiliser le modèle fine-tuné
     if job.status == "succeeded":

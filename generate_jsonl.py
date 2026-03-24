@@ -14,7 +14,7 @@ Stratégie:
 
 import csv
 import json
-from collections import defaultdict
+from collections import defaultdict, deque
 import sys
 
 # Chemins des fichiers
@@ -88,11 +88,11 @@ def find_all_paths_to_lang(start_id, target_lang, sentences, links, max_depth=4)
         return set()
     
     results = set()
-    queue = [(start_id, 0)]
+    queue = deque([(start_id, 0)])
     visited = {(start_id, sentences[start_id]['lang'])}
     
     while queue:
-        current_id, depth = queue.pop(0)
+        current_id, depth = queue.popleft()
         
         if depth > max_depth:
             continue
@@ -192,7 +192,7 @@ def main():
     # Charger UNIQUEMENT tok, fra et eng
     sentences, lang_count = load_sentences_selective(SENTENCES_CSV, {'tok', 'fra', 'eng'})
     
-    if 'tok' not in lang_count and 'fra' not in lang_count:
+    if 'tok' not in lang_count or 'fra' not in lang_count:
         print("Erreur: Il faut au minimum 'tok' ou 'fra' dans les données!")
         return
     

@@ -123,6 +123,10 @@ def analyze_jsonl(filepath, sample_size=10):
             print(f"  • {error}")
         if len(errors) > 5:
             print(f"  ... et {len(errors) - 5} autres")
+        print(f"\n{'='*70}")
+        print("⚠️  FILE HAS ERRORS — NOT READY FOR FINE-TUNING")
+        print(f"{'='*70}\n")
+        return False
     else:
         print(f"\n✅ Aucune erreur détectée")
     
@@ -170,27 +174,25 @@ def check_duplicates(filepath, check_pairs=False):
 
 def main():
     """Point d'entrée principal"""
-    
-    if len(sys.argv) < 2:
-        print("Usage:")
-        print("  python analyze_jsonl.py <fichier.jsonl> [--samples N] [--check-dupes]")
-        print("\nExemples:")
-        print("  python analyze_jsonl.py training_data.jsonl")
-        print("  python analyze_jsonl.py training_data.jsonl --samples 20")
-        print("  python analyze_jsonl.py training_data.jsonl --check-dupes")
-        sys.exit(1)
-    
-    filepath = sys.argv[1]
-    sample_size = 10
-    check_dupes = False
-    
-    # Parser les arguments
-    for arg in sys.argv[2:]:
-        if arg.startswith('--samples'):
-            sample_size = int(arg.split('=')[1]) if '=' in arg else 20
-        elif arg == '--check-dupes':
-            check_dupes = True
-    
+    import argparse
+    parser = argparse.ArgumentParser(
+        description="Analyse et validation d'un fichier JSONL de fine-tuning"
+    )
+    parser.add_argument("fichier", help="Chemin du fichier JSONL à analyser")
+    parser.add_argument(
+        "--samples", type=int, default=10, metavar="N",
+        help="Nombre d'exemples aléatoires à afficher (défaut: 10)"
+    )
+    parser.add_argument(
+        "--check-dupes", action="store_true",
+        help="Vérifier les doublons dans le fichier"
+    )
+    args = parser.parse_args()
+
+    filepath = args.fichier
+    sample_size = args.samples
+    check_dupes = args.check_dupes
+
     # Analyser
     if analyze_jsonl(filepath, sample_size):
         if check_dupes:
