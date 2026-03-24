@@ -1,5 +1,5 @@
 
-# 🎯 Générateur JSONL Bidirectionnel pour Fine-tuning: Tokpisin ↔ Français
+# 🎯 Générateur JSONL Bidirectionnel pour Fine-tuning: toki pona ↔ Français
 
 Finalité : Créer un dataset JSONL de haute qualité pour fine-tuner des modèles de traduction **tok ↔ fra** en exploitant les **chaînes de traduction indirectes** (tok → eng → fra).
 
@@ -40,7 +40,7 @@ Obtenues depuis [Tatoeba Project](https://tatoeba.org) - 13+ millions de phrases
 - **[sentences.csv](sentences.csv)** - Base de phrases (13M+ phrases)
   - Format: `id\tlangue\tphrase`
   - Téléchargement: https://downloads.tatoeba.org/exports/sentences.tar.bz2
-  - Contient: Tokpisin, Français, Anglais, et 370+ autres langues
+  - Contient: toki pona, Français, Anglais, et 370+ autres langues
 
 - **[links.csv](links.csv)** - Liaisons entre phrases (31M+ liens)
   - Format: `id1\tid2` (relations bidirectionnelles)
@@ -136,7 +136,7 @@ fra "Je veux du pain"  ↔  tok "mi wile e pan"
 
 ### 🔗 Chaînes de traduction exploitées
 ```
-Tokpisin → Anglais → Français
+toki pona → Anglais → Français
    tok        eng        fra
     ↓         ↓          ↓
 "hello"  →  "hello"  →  "bonjour"
@@ -267,7 +267,7 @@ pip install nltk
   - Source: 13+ millions de phrases alignées
   - Licence: CC-BY-SA 2.0
 
-- **Tokpisin**: Langue créole de Papouasie-Nouvelle-Guinée
+- **toki pona**: Langue créole de Papouasie-Nouvelle-Guinée
   - Wikipedia: https://en.wikipedia.org/wiki/Tok_Pisin
   - ISO 639-3: `tpi`
 

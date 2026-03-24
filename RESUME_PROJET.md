@@ -45,7 +45,7 @@ Vous avez demandé de créer un **JSONL propre pour fine-tuning**, **bidirection
 
 Le script **multi-saute** les liaisons:
 
-### Exemple 1: Tokpisin → Anglais → Français
+### Exemple 1: toki pona → Anglais → Français
 ```
 tok: "mi wile e pan"
      ↓ (lien direct ou indirect)
@@ -197,7 +197,7 @@ Le format respecte les standards OpenAI et compatibles:
 
 Excellent pour:
 - ✅ Fine-tuner un modèle tok↔fra
-- ✅ Améliorer traduction Tokpisin
+- ✅ Améliorer traduction toki pona
 - ✅ Augmenter dataset bilingue existant
 - ✅ Créer ressources pour langue peu dotée
 - ✅ R&D traduction indirecte
@@ -217,7 +217,7 @@ Excellent pour:
 ## 📝 Notes importantes
 
 1. **Source de données**: [Tatoeba.org](https://tatoeba.org) - 13+ millions de phrases
-2. **Langue "Tokpisin"** (tok): Pidgin de Papouasie-Nouvelle-Guinée
+2. **Langue "toki pona"** (tok): Pidgin de Papouasie-Nouvelle-Guinée
 3. **Chaînes de traduction**: Augmente le dataset 50x au-delà des liens directs
 4. **Profondeur 4**: Balance entre couverture et qualité
 
