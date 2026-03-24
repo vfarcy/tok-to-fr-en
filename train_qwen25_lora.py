@@ -98,6 +98,18 @@ def parse_args() -> argparse.Namespace:
         help="Path to a checkpoint directory to resume from",
     )
     parser.add_argument(
+        "--early-stopping-patience",
+        type=int,
+        default=3,
+        help="Stop if eval metric does not improve for N evaluations (0 to disable)",
+    )
+    parser.add_argument(
+        "--early-stopping-threshold",
+        type=float,
+        default=0.0,
+        help="Minimum eval improvement to reset early-stopping patience",
+    )
+    parser.add_argument(
         "--load-in-4bit",
         action="store_true",
         help="Enable 4-bit quantization (requires bitsandbytes)",
@@ -128,6 +140,7 @@ def main() -> int:
         AutoModelForCausalLM,
         AutoTokenizer,
         DataCollatorForLanguageModeling,
+        EarlyStoppingCallback,
     )
     from trl import SFTConfig, SFTTrainer
 
@@ -215,6 +228,9 @@ def main() -> int:
         save_strategy="steps",
         save_steps=args.save_steps,
         save_total_limit=2,
+        load_best_model_at_end=True,
+        metric_for_best_model="eval_loss",
+        greater_is_better=False,
         bf16=torch.cuda.is_bf16_supported(),
         fp16=not torch.cuda.is_bf16_supported(),
         optim="paged_adamw_8bit" if args.load_in_4bit else "adamw_torch",
@@ -226,12 +242,22 @@ def main() -> int:
         packing=False,
     )
 
+    callbacks = None
+    if args.early_stopping_patience > 0:
+        callbacks = [
+            EarlyStoppingCallback(
+                early_stopping_patience=args.early_stopping_patience,
+                early_stopping_threshold=args.early_stopping_threshold,
+            )
+        ]
+
     trainer = SFTTrainer(
         model=model,
         args=training_args,
         train_dataset=train_ds,
         eval_dataset=val_ds,
         peft_config=lora_config,
+        callbacks=callbacks,
         processing_class=tokenizer,
         data_collator=DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False),
     )
