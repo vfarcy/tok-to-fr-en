@@ -21,6 +21,22 @@
   - 8,759 paires (10%)
   - Pour l'évaluation finale
 
+### Dataset Pédagogique Conversationnel
+- **pedagogy_dataset.jsonl**
+  - Dataset principal pour fine-tuning d'un modèle professeur de toki pona
+  - Format conversationnel multi-tours : `{"schema_version", "sample_id", "lesson", "language", "messages", "pedagogy", "quality"}`
+  - 5 types de leçons : `guided_dialogue`, `pattern_drill`, `error_correction`, `review_recap`, `translation_with_explanation`
+  - Chaque enregistrement est un dialogue complet élève ↔ professeur
+  - Conforme au schéma strict `schema.json`
+
+- **pedagogy_dataset_quick.jsonl**
+  - Échantillon rapide généré pour test et validation
+
+- **schema.json**
+  - Schéma JSON Schema Draft 2020-12 strict
+  - Valide chaque enregistrement du dataset pédagogique
+  - Champs obligatoires : `schema_version`, `sample_id`, `lesson`, `language`, `messages`, `pedagogy`, `quality`
+
 ---
 
 ## 🐍 Scripts Python
@@ -38,6 +54,52 @@
   - Support de multiples paires de langues
   - Usage: `python generate_jsonl_advanced.py --source eng --target fra`
 
+- **generate_pedagogical_dataset.py**
+  - Script de génération du dataset pédagogique conversationnel
+  - Objectif : produire des dialogues multi-tours pour fine-tuner un modèle qui enseigne le toki pona à un locuteur français, selon une méthode orale guidée
+  - Source de données : `sentences.csv` + `links.csv` (Tatoeba)
+  - Pipeline en 5 étapes : chargement sélectif → graphe de liens → paires BFS → filtrage qualité → génération de dialogues
+  - 5 types de leçons produits en rotation, voir ci-dessous
+  - Filtrage intégré : anti-vulgarité, anti-phrases complexes, born mots min/max
+  - Format de sortie : JSONL conforme à `schema.json`
+  - Usage minimal : `python generate_pedagogical_dataset.py`
+  - Usage complet : `python generate_pedagogical_dataset.py --output pedagogy_dataset.jsonl --depth 3 --max-samples 3000`
+  - Usage rapide (test) : `python generate_pedagogical_dataset.py --max-source-sentences 2000 --max-samples 200`
+
+  **Options CLI :**
+
+  | Option | Défaut | Description |
+  |---|---|---|
+  | `--sentences` | `sentences.csv` | Chemin vers le CSV des phrases |
+  | `--links` | `links.csv` | Chemin vers le CSV des liens |
+  | `--output` | `pedagogy_dataset.jsonl` | Fichier JSONL de sortie |
+  | `--depth` | `3` | Profondeur BFS pour les chaînes indirectes |
+  | `--max-samples` | `5000` | Nombre maximum de dialogues générés |
+  | `--max-source-sentences` | `0` (tout) | Limite de phrases tok scannées (0 = aucune limite) |
+  | `--seed` | `42` | Graine aléatoire pour la reproductibilité |
+  | `--min-words-fr` | `1` | Nombre minimum de mots dans la phrase française |
+  | `--max-words-fr` | `8` | Nombre maximum de mots dans la phrase française |
+  | `--min-words-tok` | `1` | Nombre minimum de mots dans la phrase toki pona |
+  | `--max-words-tok` | `12` | Nombre maximum de mots dans la phrase toki pona |
+
+  **Types de leçons produits (en rotation cyclique 1/5) :**
+
+  | Type | Rôle pédagogique | Nombre de tours |
+  |---|---|---|
+  | `guided_dialogue` | Introduire une phrase, faire répéter, récapituler | 5 |
+  | `pattern_drill` | Faire produire une transformation de phrase | 5 |
+  | `error_correction` | Corriger une tentative incorrecte | 5 |
+  | `review_recap` | Réviser une structure déjà vue | 5 |
+  | `translation_with_explanation` | Traduire avec justification courte | 3 |
+
+  **Filtrage qualité appliqué :**
+  - Suppression des termes vulgaires (liste bloquée)
+  - Suppression des phrases françaises avec marqueurs de complexité avancée (`si `, `j'aurais`, `quoique`, etc.)
+  - Suppression des phrases avec caractères interdits (`;`, `(`, `)`, `"`)
+  - Suppression des phrases toki pona hors alphabet
+  - Déduplication stricte (comparaison insensible à la casse)
+  - Niveau CECRL inféré automatiquement selon la complexité (A0/A1/A2/B1)
+
 ### Analyse
 - **analyze_jsonl.py**
   - Statistiques du dataset
@@ -52,6 +114,16 @@
   - Paramètres de ratio configurables
   - Mélange des données
   - Usage: `python split_jsonl.py training_data.jsonl --train 0.8 --val 0.1`
+
+### Validation
+- **validate_dataset.py**
+  - Valide un fichier JSONL ligne par ligne contre `schema.json`
+  - Affiche le numéro de ligne et le chemin du champ en faute
+  - Produit un résumé avec compteurs valide/invalide/erreur JSON
+  - Code de sortie 0 si tout est valide, 1 sinon (utilisable en CI)
+  - Usage : `python validate_dataset.py --jsonl pedagogy_dataset.jsonl --schema schema.json`
+  - Options : `--max-errors N` (défaut 20), `--no-skip-empty-lines`
+  - Dépendance : `pip install jsonschema`
 
 ### Intégration
 - **integration_guide.py**
@@ -91,6 +163,11 @@
 ---
 
 ## ✅ CHECKLIST D'UTILISATION
+
+### Étape 0: Dataset Pédagogique (nouveau)
+- [ ] Générer le dataset : `python generate_pedagogical_dataset.py --output pedagogy_dataset.jsonl --depth 3 --max-samples 3000`
+- [ ] Valider le dataset : `python validate_dataset.py --jsonl pedagogy_dataset.jsonl`
+- [ ] Inspecter un exemple : `Get-Content pedagogy_dataset.jsonl -Head 1 | python -m json.tool`
 
 ### Étape 1: Compréhension
 - [ ] Lire SYNTHESE_FINALE.md (5 min)
@@ -136,7 +213,7 @@ wc -l training_data.jsonl
 python analyze_jsonl.py training_data.jsonl
 ```
 
-### Régénérer le dataset
+### Régénérer le dataset de traduction
 ```bash
 # Avec défauts (tok↔fra)
 python generate_jsonl.py
@@ -146,6 +223,35 @@ python generate_jsonl_advanced.py --source eng --target fra
 
 # Avec profondeur réduite (plus rapide)
 python generate_jsonl_advanced.py --depth 2
+```
+
+### Générer le dataset pédagogique
+```powershell
+# Dataset de production (3000 dialogues)
+python generate_pedagogical_dataset.py --output pedagogy_dataset.jsonl --depth 3 --max-samples 3000
+
+# Itération rapide (200 dialogues, scan partiel)
+python generate_pedagogical_dataset.py --output pedagogy_dataset_quick.jsonl --depth 2 --max-source-sentences 2000 --max-samples 200
+
+# Paramètres complets
+python generate_pedagogical_dataset.py `
+  --sentences sentences.csv `
+  --links links.csv `
+  --output pedagogy_dataset.jsonl `
+  --depth 3 `
+  --max-samples 5000 `
+  --seed 42 `
+  --max-words-fr 8 `
+  --max-words-tok 12
+```
+
+### Valider le dataset pédagogique
+```powershell
+# Validation standard
+python validate_dataset.py --jsonl pedagogy_dataset.jsonl --schema schema.json
+
+# Afficher plus d'erreurs
+python validate_dataset.py --jsonl pedagogy_dataset.jsonl --max-errors 50
 ```
 
 ### Splitter le dataset
@@ -181,6 +287,7 @@ python integration_guide.py
 
 ## 🔗 FLUX DE DONNÉES
 
+### Pipeline de traduction (original)
 ```
 sentences.csv (13M phrases)
     ↓
@@ -207,7 +314,38 @@ training_data.jsonl (87,576 paires)
     ↓
 train / val / test
     ↓
-✅ Ready for fine-tuning!
+✅ Ready for translation fine-tuning!
+```
+
+### Pipeline pédagogique (nouveau)
+```
+sentences.csv + links.csv
+    ↓
+[1] Chargement sélectif
+    tok=74,577  fra=710,037  eng=2,016,191
+    ↓
+[2] Graphe de liens BFS (depth 3)
+    ~9.4M nœuds de liens
+    ↓
+[3] Construction des paires fr → tok
+    ~28,000-31,000 paires brutes
+    ↓
+[4] Filtrage qualité
+    • Anti-vulgarité
+    • Anti-phrases complexes
+    • Bornes de longueur (fr: 1-8 mots, tok: 1-12 mots)
+    • Déduplication stricte
+    → ~20,000-28,000 paires conservées
+    ↓
+[5] Génération de dialogues pédagogiques
+    Rotation cyclique des 5 types de leçons
+    Niveau inféré automatiquement (A0/A1/A2/B1)
+    ↓
+pedagogy_dataset.jsonl
+    ↓
+[validate_dataset.py] ← schema.json
+    ↓
+✅ Ready for conversational fine-tuning!
 ```
 
 ---
@@ -237,6 +375,10 @@ Balance: 50% tok→fra, 50% fra→tok
 ---
 
 ## ❓ FAQ RAPIDE
+
+**Q: Quelle est la différence entre training_data.jsonl et pedagogy_dataset.jsonl ?**
+→ `training_data.jsonl` : paires de traduction simples `prompt/completion`. Entraîne un modèle à traduire.
+→ `pedagogy_dataset.jsonl` : dialogues multi-tours professeur/élève. Entraîne un modèle à enseigner.
 
 **Q: Puis-je utiliser directement le JSONL?**
 ✅ Oui! Il est prêt pour OpenAI API, HuggingFace, etc.
@@ -270,6 +412,9 @@ Balance: 50% tok→fra, 50% fra→tok
 - HuggingFace: `pip install transformers torch datasets`
 - PyTorch Lightning: `pip install pytorch-lightning`
 - Évaluation: `pip install nltk`
+
+### Pour la validation du dataset pédagogique
+- `pip install jsonschema`
 
 ---
 

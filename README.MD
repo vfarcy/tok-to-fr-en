@@ -73,7 +73,7 @@ python integration_guide.py
 ### 3. Utiliser pour fine-tuning
 
 ```bash
-# OpenAI API (recommandé)
+# OpenAI API (recommandé pour traduction)
 openai api fine_tunes.create \
   -t training_data_train.jsonl \
   -v training_data_val.jsonl \
@@ -84,6 +84,210 @@ openai api fine_tunes.create \
 
 ---
 
+## 🏫 Dataset Pédagogique : Enseigner le Toki Pona
+
+En plus du dataset de traduction brute, ce projet inclut un pipeline complet pour générer un dataset conversationnel pédagogique, destiné à fine-tuner un LLM qui **enseigne** le toki pona à un locuteur français selon une méthode orale guidée.
+
+### Objectif
+
+Un modèle fine-tuné sur ce dataset doit se comporter comme un professeur :
+- Il introduit une notion à la fois
+- Il fait produire l'élève activement
+- Il corrige de façon bienveillante et courte
+- Il récapitalue fréquemment
+- Il ne surcharge jamais avec du jargon grammatical
+
+### Différence avec training_data.jsonl
+
+| | `training_data.jsonl` | `pedagogy_dataset.jsonl` |
+|---|---|---|
+| **Forme** | Paire `prompt/completion` | Dialogue multi-tours `messages[]` |
+| **Usage** | Fine-tuner un traducteur | Fine-tuner un professeur |
+| **Contenu** | Phrases isolées | Épisodes d'enseignement complets |
+| **Format** | JSONL simple | JSONL conforme à `schema.json` |
+| **Filtrage** | Aucun | Qualité pédagogique, anti-vulgarité, niveaux CECRL |
+
+### Génération du dataset
+
+```powershell
+# Dataset de production (3000 dialogues)
+python generate_pedagogical_dataset.py --output pedagogy_dataset.jsonl --depth 3 --max-samples 3000
+
+# Itération rapide (scan partiel, 200 exemples)
+python generate_pedagogical_dataset.py --output pedagogy_dataset_quick.jsonl --depth 2 --max-source-sentences 2000 --max-samples 200
+```
+
+### Pipeline interne du script
+
+```
+sentences.csv + links.csv (Tatoeba)
+    ↓
+[1] Chargement sélectif
+    tok=74,577  fra=710,037  eng=2,016,191 phrases
+    ↓
+[2] Construction du graphe de liens (BFS, depth 3)
+    ~9.4M noeuds de liens conservés
+    ↓
+[3] Construction des paires fr ↔ tok
+    ~28,000 paires brutes via chaînes indirectes
+    ↓
+[4] Filtrage qualité
+    • Suppression des termes vulgaires
+    • Suppression des structures françaises complexes
+      (conditionnel, subjonctif, propositions longues)
+    • Bornes de longueur : fr 1-8 mots, tok 1-12 mots
+    • Déduplication stricte (insensible à la casse)
+    → ~20,000 paires conservées
+    ↓
+[5] Génération des dialogues pédagogiques
+    Rotation sur 5 types de leçons
+    Niveau inféré automatiquement (A0/A1/A2/B1)
+    ↓
+pedagogy_dataset.jsonl
+    (dialogues multi-tours conformes à schema.json)
+```
+
+### Les 5 types de leçons
+
+Chaque exemple cyclique appartient à l'un de ces types :
+
+**1. `guided_dialogue`** \- Dialogue guidé
+> Le professeur introduit une phrase, fait répéter l'élève, puis récapitalue.
+```
+user: Je debute. Comment dire en toki pona: Tu habites où ?
+assistant: Pour dire "Tu habites où", tu peux dire: tomo sina li lon seme. Repete la phrase.
+user: tomo sina li lon seme.
+assistant: Bien joue. Mini recap: phrases courtes et prononciation claire.
+```
+
+**2. `pattern_drill`** \- Exercice de transformation
+> L'élève produit la traduction à partir d'une consigne, le professeur confirme.
+```
+user: Fais-moi pratiquer avec un petit exercice.
+assistant: Transforme cette idée en toki pona: "Je t'aime encore". Ecris seulement la phrase.
+user: mi olin kin e sina.
+assistant: Correct. Reponse attendue: mi olin kin e sina. Refais-la lentement.
+```
+
+**3. `error_correction`** \- Correction d'erreur
+> L'élève fait une tentative (incorrecte), le professeur corrige brèvement.
+```
+user: Je veux dire "Je ne ressens rien". J'ai essaye: mi pilin ijo ala. C'est correct ?
+assistant: Presque. Forme correcte: mi pilin e ijo ala. Repete la version correcte.
+user: mi pilin e ijo ala.
+assistant: Parfait. La phrase est correcte maintenant.
+```
+
+**4. `review_recap`** \- Révision
+> Rappel d'une structure vue, avec production active de l'élève.
+```
+user: On fait une revision rapide ?
+assistant: Donne la phrase toki pona pour "Merci beaucoup".
+user: pona mute.
+assistant: Excellent. Reponse valide: pona mute. On continue.
+```
+
+**5. `translation_with_explanation`** \- Traduction avec explication
+> L'élève demande une traduction + justification courte.
+```
+user: Traduis en toki pona et explique tres simplement: Tu es gentil.
+assistant: Traduction: sina pona. Explication: on garde la phrase simple et directe. Dis-la une fois.
+```
+
+### Format d'un enregistrement
+
+```json
+{
+  "schema_version": "1.0",
+  "sample_id": "L001_0001",
+  "lesson": {
+    "lesson_id": "L001",
+    "lesson_type": "guided_dialogue",
+    "level": "A1",
+    "topic": "dialogue_guide",
+    "objective": "Apprendre une phrase utile avec repetition active."
+  },
+  "language": { "source_language": "fr", "target_language": "tok" },
+  "messages": [
+    { "role": "system", "content": "Tu es un professeur de toki pona..." },
+    { "role": "user",   "content": "Je debute. Comment dire: Tu habites où ?" },
+    { "role": "assistant", "content": "Pour dire \"Tu habites où\", dis: tomo sina li lon seme." },
+    { "role": "user",   "content": "tomo sina li lon seme." },
+    { "role": "assistant", "content": "Bien joue. Mini recap..." }
+  ],
+  "pedagogy": {
+    "skills": ["vocabulaire_de_base", "reformulation"],
+    "difficulty": 1,
+    "expects_student_production": true,
+    "includes_correction": false,
+    "includes_recap": true
+  },
+  "quality": {
+    "safe_for_beginners": true,
+    "no_vulgarity": true,
+    "no_hate": true,
+    "max_new_concepts": 1
+  }
+}
+```
+
+### Validation du dataset
+
+```powershell
+# Installer la dépendance
+pip install jsonschema
+
+# Valider
+python validate_dataset.py --jsonl pedagogy_dataset.jsonl --schema schema.json
+```
+
+### Recommandations pour le fine-tuning
+
+| Modèle recommandé | Nombre d'exemples | Pourquoi |
+|---|---|---|
+| **Mistral 7B Instruct** | 1 000 – 3 000 | Meilleur français natif, efficace à faible volume |
+| LLaMA 3.1 8B Instruct | 2 000 – 5 000 | Très bon aussi, meilleur écosystème |
+
+Privilegier **80-95 % de données pédagogiques**, le reste éventuellement de `training_data.jsonl` en support lexical.
+
+### Prochaines étapes — Dataset Pédagogique
+
+Une fois `pedagogy_dataset.jsonl` généré, suivre ce workflow :
+
+#### Étape 1 — Valider le dataset
+
+```powershell
+# Installer la dépendance (une seule fois)
+pip install jsonschema
+
+# Lancer la validation ligne par ligne contre schema.json
+python validate_dataset.py --jsonl pedagogy_dataset.jsonl --schema schema.json
+```
+
+> Exit code 0 = dataset valide. Exit code 1 = erreurs détaillées affichées (avec numéro de ligne).
+> Option utile : `--max-errors 5` pour stopper après 5 erreurs.
+
+#### Étape 2 — Découper en train / val / test
+
+```powershell
+# Découpage 80 % / 10 % / 10 % (par défaut)
+python split_jsonl.py pedagogy_dataset.jsonl
+
+# Résultat :
+#   pedagogy_dataset_train.jsonl   (80% — entraînement)
+#   pedagogy_dataset_val.jsonl     (10% — validation pendant le fine-tuning)
+#   pedagogy_dataset_test.jsonl    (10% — évaluation finale)
+
+# Découpage personnalisé (ex. 90/5/5)
+python split_jsonl.py pedagogy_dataset.jsonl --train 0.9 --val 0.05 --test 0.05
+```
+
+#### Étape 3 — Lancer le fine-tuning
+
+Utiliser `pedagogy_dataset_train.jsonl` + `pedagogy_dataset_val.jsonl` avec le modèle cible (Mistral 7B Instruct recommandé).
+
+---
+
 ## 📦 Fichiers générés
 
 ### Datasets (JSONL)
@@ -91,12 +295,22 @@ openai api fine_tunes.create \
 ```
 📊 Données de fine-tuning
 
-├── training_data.jsonl           [7.3 MB]  ← Dataset complet (87,576 paires)
+├── training_data.jsonl           [7.3 MB]  ← Dataset traduction complet (87,576 paires)
 │
-└── Splits 80/10/10:
-    ├── training_data_train.jsonl [5.8 MB]  ← 70,060 paires (entraînement)
-    ├── training_data_val.jsonl   [0.7 MB]  ← 8,757 paires (validation)
-    └── training_data_test.jsonl  [0.7 MB]  ← 8,759 paires (test)
+├── Splits 80/10/10:
+│   ├── training_data_train.jsonl [5.8 MB]  ← 70,060 paires (entraînement)
+│   ├── training_data_val.jsonl   [0.7 MB]  ← 8,757 paires (validation)
+│   └── training_data_test.jsonl  [0.7 MB]  ← 8,759 paires (test)
+│
+└── Dataset pédagogique (enseignement conversationnel):
+    ├── pedagogy_dataset.jsonl            ← Dialogues professeur↔élève (fine-tuning enseignant)
+    ├── schema.json                       ← Schéma JSON strict de validation
+    ├── pedagogy_dataset_quick.jsonl      ← Échantillon rapide pour tests
+    │
+    └── Splits 80/10/10 (après split_jsonl.py):
+        ├── pedagogy_dataset_train.jsonl  ← ~2 400 dialogues (entraînement)
+        ├── pedagogy_dataset_val.jsonl    ← ~300 dialogues (validation)
+        └── pedagogy_dataset_test.jsonl  ← ~300 dialogues (évaluation finale)
 ```
 
 ### Scripts Python
@@ -104,10 +318,12 @@ openai api fine_tunes.create \
 ```
 🐍 Outils de traitement
 
-├── generate_jsonl.py                  ← Générer le dataset (simple)
+├── generate_jsonl.py                  ← Générer le dataset de traduction (simple)
 ├── generate_jsonl_advanced.py         ← Générer (options CLI avancées)
+├── generate_pedagogical_dataset.py    ← Générer le dataset pédagogique conversationnel
 ├── analyze_jsonl.py                   ← Analyser & valider
 ├── split_jsonl.py                     ← Partitionner train/val/test
+├── validate_dataset.py               ← Valider le dataset pédagogique contre schema.json
 └── integration_guide.py               ← Exemples fine-tuning (OpenAI, HF, etc.)
 ```
 
@@ -217,10 +433,26 @@ python integration_guide.py
 
 ## 🚀 Prochaines étapes
 
-### Pour démarrer immédiatement
+### Dataset de traduction (`training_data.jsonl`)
 1. ✅ **Lire**: [DEMARRAGE_RAPIDE.md](DEMARRAGE_RAPIDE.md) (5 min)
 2. ✅ **Valider**: `python analyze_jsonl.py training_data.jsonl`
 3. ⏭️ **Fine-tuner**: Voir [integration_guide.py](integration_guide.py)
+
+### Dataset pédagogique (`pedagogy_dataset.jsonl`)
+
+| Étape | Commande | Prérequis |
+|---|---|---|
+| **1. Valider** | `python validate_dataset.py --jsonl pedagogy_dataset.jsonl --schema schema.json` | `pip install jsonschema` |
+| **2. Découper** | `python split_jsonl.py pedagogy_dataset.jsonl` | — |
+| **3. Fine-tuner** | Utiliser `pedagogy_dataset_train.jsonl` + `pedagogy_dataset_val.jsonl` | Mistral 7B Instruct |
+
+```powershell
+# Workflow complet en 3 commandes
+pip install jsonschema
+python validate_dataset.py --jsonl pedagogy_dataset.jsonl --schema schema.json
+python split_jsonl.py pedagogy_dataset.jsonl
+# → génère pedagogy_dataset_train.jsonl / _val.jsonl / _test.jsonl
+```
 
 ### Pour approfondir
 - Consulter [SYNTHESE_FINALE.md](SYNTHESE_FINALE.md) pour détails complets
@@ -228,15 +460,19 @@ python integration_guide.py
 - [INDEX.md](INDEX.md) pour référence complète
 
 ### Pour explorer les données
-```bash
-# Voir les premières paires
+```powershell
+# Voir les premières paires (dataset traduction)
 Get-Content training_data.jsonl -Head 5
 
-# Compter les paires
-(Get-Content training_data.jsonl | Measure-Object -Line).Lines
+# Compter les enregistrements
+(Get-Content pedagogy_dataset.jsonl | Measure-Object -Line).Lines
 
-# Analyser en détail
-python analyze_jsonl.py training_data.jsonl --check-dupes
+# Analyser la distribution des niveaux CECRL
+python -c "
+import json; from collections import Counter
+levels = Counter(json.loads(l)['lesson']['level'] for l in open('pedagogy_dataset.jsonl', encoding='utf-8') if l.strip())
+print({k: f'{v} ({v/sum(levels.values())*100:.1f}%)' for k,v in sorted(levels.items())})
+"
 ```
 
 ---
