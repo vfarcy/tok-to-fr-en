@@ -43,7 +43,7 @@ Vous avez demandé:
 
 ### Vue d'ensemble
 - **Paires totales**: 87,576
-- **Langues**: Tokpisin (tok) ↔ Français (fra)
+- **Langues**: toki pona (tok) ↔ Français (fra)
 - **Qualité**: Production-ready ✅
 - **Size**: 7.3 MB (très portable)
 
@@ -67,7 +67,7 @@ Chaînes indirectes:       ~41,788 paires (98%)
 
 ### Longueurs des phrases
 ```
-Source (Tokpisin):
+Source (toki pona):
   • Moyenne: 5.6 mots
   • Médiane: 5.0 mots
   • Range: 1-83 mots
@@ -121,7 +121,7 @@ python generate_jsonl_advanced.py --depth 2 -o quick_test.jsonl
 
 ## 📊 Exemples de paires généré
 
-### Tokpisin → Français
+### toki pona → Français
 ```
 "mi wile e pan."              → "Je veux du pain."
 "sewi o!"                     → "Bon Dieu !"
@@ -129,7 +129,7 @@ python generate_jsonl_advanced.py --depth 2 -o quick_test.jsonl
 "sina ken ala?"               → "Tu ne peux pas?"
 ```
 
-### Français → Tokpisin
+### Français → toki pona
 ```
 "Je ne sais pas."                → "mi sona ala."
 "Tu as raison."                  → "sina pona."
@@ -176,7 +176,7 @@ Les deux directions (tok→fra et fra→tok) sont générées **simultanément**
 
 ### ✅ Optimisé en mémoire
 Charge uniquement:
-- 74,577 phrases Tokpisin
+- 74,577 phrases toki pona
 - 710,037 phrases Français
 - 2,016,191 phrases Anglais (pivot)
 
@@ -214,7 +214,7 @@ While not empty:
 ## 🎓 Ressources utiles
 
 - **Tatoeba**: https://tatoeba.org (source des données)
-- **Tokpisin**: Langue créole de PNG
+- **toki pona**: Langue créole de PNG
 - **Fine-tuning**: https://platform.openai.com/docs/guides/fine-tuning
 - **JSONL**: Format requis pour OpenAI API
 
