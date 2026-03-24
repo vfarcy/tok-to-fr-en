@@ -123,8 +123,8 @@
 - **train_qwen25_lora.py**
   - Fine-tuning LoRA local pour `Qwen/Qwen2.5-1.5B-Instruct`
   - Entrée: `pedagogy_dataset_train.jsonl` + `pedagogy_dataset_val.jsonl`
-  - Options utiles: `--save-steps`, `--resume-from-checkpoint`, `--load-in-4bit`
-  - Usage: `python train_qwen25_lora.py --train-file pedagogy_dataset_train.jsonl --val-file pedagogy_dataset_val.jsonl --output-dir qwen25-1.5b-tokipona-lora --batch-size 1 --grad-accum 16 --max-length 512 --save-steps 50`
+  - Options utiles: `--save-steps`, `--resume-from-checkpoint`, `--early-stopping-patience`, `--early-stopping-threshold`, `--load-in-4bit`
+  - Usage: `python train_qwen25_lora.py --train-file pedagogy_dataset_train.jsonl --val-file pedagogy_dataset_val.jsonl --output-dir qwen25-1.5b-tokipona-lora --batch-size 1 --grad-accum 16 --max-length 512 --save-steps 50 --early-stopping-patience 3 --early-stopping-threshold 0.0005`
 
 ### Validation
 - **validate_dataset.py**
@@ -190,7 +190,7 @@
 - [ ] Splitter sans fuite : `python split_pedagogy_jsonl.py pedagogy_dataset.jsonl`
 - [ ] Inspecter un exemple : `head -n 1 pedagogy_dataset.jsonl | python -m json.tool`
 - [ ] Installer dépendances fine-tuning : `pip install -r requirements-finetune.txt`
-- [ ] Lancer entraînement local : `python train_qwen25_lora.py --train-file pedagogy_dataset_train.jsonl --val-file pedagogy_dataset_val.jsonl --output-dir qwen25-1.5b-tokipona-lora --batch-size 1 --grad-accum 16 --max-length 512 --save-steps 50`
+- [ ] Lancer entraînement local : `python train_qwen25_lora.py --train-file pedagogy_dataset_train.jsonl --val-file pedagogy_dataset_val.jsonl --output-dir qwen25-1.5b-tokipona-lora --batch-size 1 --grad-accum 16 --max-length 512 --save-steps 50 --early-stopping-patience 3 --early-stopping-threshold 0.0005`
 
 ### Étape 1: Compréhension
 - [ ] Lire SYNTHESE_FINALE.md (5 min)

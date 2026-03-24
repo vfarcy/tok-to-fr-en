@@ -299,7 +299,9 @@ python train_qwen25_lora.py \
   --batch-size 1 \
   --grad-accum 16 \
   --max-length 512 \
-  --save-steps 50
+  --save-steps 50 \
+  --early-stopping-patience 3 \
+  --early-stopping-threshold 0.0005
 
 # Reprendre après interruption (exemple)
 python train_qwen25_lora.py \
@@ -307,7 +309,19 @@ python train_qwen25_lora.py \
   --val-file pedagogy_dataset_val.jsonl \
   --output-dir qwen25-1.5b-tokipona-lora \
   --resume-from-checkpoint qwen25-1.5b-tokipona-lora/checkpoint-50
+
+# Désactiver l'arrêt automatique (optionnel)
+python train_qwen25_lora.py \
+  --train-file pedagogy_dataset_train.jsonl \
+  --val-file pedagogy_dataset_val.jsonl \
+  --output-dir qwen25-1.5b-tokipona-lora \
+  --early-stopping-patience 0
 ```
+
+L'early stopping observe `eval_loss` sur le split validation:
+- arrêt automatique si la métrique n'améliore plus pendant N évaluations (`--early-stopping-patience`)
+- seuil minimal d'amélioration configurable (`--early-stopping-threshold`)
+- meilleur checkpoint restauré automatiquement en fin de run
 
 ---
 

@@ -61,8 +61,13 @@ python train_qwen25_lora.py \
   --batch-size 1 \
   --grad-accum 16 \
   --max-length 512 \
-  --save-steps 50
+  --save-steps 50 \
+  --early-stopping-patience 3 \
+  --early-stopping-threshold 0.0005
 ```
+
+L'arrêt automatique est basé sur `eval_loss`: si la validation n'améliore plus,
+le run s'arrête et le meilleur checkpoint est restauré.
 
 ---
 
