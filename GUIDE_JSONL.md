@@ -90,7 +90,7 @@ Le script découvre les traductions **indirectes** via BFS jusqu'à une profonde
 ```
 Exemple avec profondeur=2:
 
-Tokpisin → Anglais → Français
+toki pona → Anglais → Français
     tok        eng        fra
      ↓         ↓          ↓
  "hello"  →  "hello"  →  "bonjour"
