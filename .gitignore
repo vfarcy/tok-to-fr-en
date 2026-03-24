@@ -3,3 +3,11 @@ links.csv
 *.tar.bz2
 __pycache__/
 *.pyc
+
+# Training artifacts
+qwen25-1.5b-tokipona-lora/
+
+# Generated pedagogical splits
+pedagogy_dataset_train.jsonl
+pedagogy_dataset_val.jsonl
+pedagogy_dataset_test.jsonl
