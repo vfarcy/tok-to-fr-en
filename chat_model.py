@@ -5,7 +5,7 @@ Chat interactif avec le modèle fine-tuné (LoRA checkpoint).
 
 Usage:
   python chat_model.py
-  python chat_model.py --adapter qwen25-1.5b-tokipona-lora/checkpoint-1800
+    python chat_model.py --adapter qwen25-1.5b-tokipona-lora-v2
   python chat_model.py --system "Tu es un tuteur de toki pona."
 """
 import argparse
@@ -25,7 +25,7 @@ def parse_args():
     )
     p.add_argument(
         "--adapter",
-        default="qwen25-1.5b-tokipona-lora/checkpoint-1800",
+        default="qwen25-1.5b-tokipona-lora-v2",
         help="Chemin vers le checkpoint LoRA",
     )
     p.add_argument(
