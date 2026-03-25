@@ -10,10 +10,11 @@ Usage:
 """
 import argparse
 import sys
+from threading import Thread
 
 import torch
 from peft import PeftModel
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
 
 
 def parse_args():
@@ -42,11 +43,11 @@ def parse_args():
         help="Longueur max de la réponse générée",
     )
     p.add_argument(
-        "--temperature", type=float, default=0.7,
+        "--temperature", type=float, default=0.0,
         help="Température de sampling (0 = déterministe)",
     )
     p.add_argument(
-        "--top-p", type=float, default=0.9,
+        "--top-p", type=float, default=1.0,
         help="Top-p nucleus sampling",
     )
     return p.parse_args()
@@ -103,19 +104,35 @@ def main():
         inputs = tokenizer(prompt, return_tensors="pt").to(device)
         in_len = inputs["input_ids"].shape[1]
 
-        with torch.inference_mode():
-            out = model.generate(
-                **inputs,
-                max_new_tokens=args.max_new_tokens,
-                do_sample=args.temperature > 0,
-                temperature=args.temperature if args.temperature > 0 else 1.0,
-                top_p=args.top_p,
-                pad_token_id=tokenizer.eos_token_id,
-                eos_token_id=tokenizer.eos_token_id,
-            )
+        streamer = TextIteratorStreamer(
+            tokenizer,
+            skip_prompt=True,
+            skip_special_tokens=True,
+        )
 
-        answer = tokenizer.decode(out[0][in_len:], skip_special_tokens=True).strip()
-        print(f"Modèle: {answer}\n")
+        generation_kwargs = dict(
+            **inputs,
+            max_new_tokens=args.max_new_tokens,
+            do_sample=args.temperature > 0,
+            temperature=args.temperature if args.temperature > 0 else 1.0,
+            top_p=args.top_p,
+            pad_token_id=tokenizer.eos_token_id,
+            eos_token_id=tokenizer.eos_token_id,
+            streamer=streamer,
+        )
+
+        thread = Thread(target=model.generate, kwargs=generation_kwargs)
+        thread.start()
+
+        print("Modèle: ", end="", flush=True)
+        chunks = []
+        for chunk in streamer:
+            print(chunk, end="", flush=True)
+            chunks.append(chunk)
+        thread.join()
+
+        answer = "".join(chunks).strip()
+        print("\n")
         history.append({"role": "assistant", "content": answer})
 
 
