@@ -443,7 +443,15 @@ def make_messages(lesson_type: str, fr_text: str, tok_text: str) -> List[Dict[st
             "content": (
                 f"Traduction: {tok_clean}. "
                 "Explication courte: on garde une phrase simple et directe, sans surcharge. "
-                "Dis-la une fois pour t'entrainer."
+                "Recopie exactement la traduction."
+            ),
+        },
+        {"role": "user", "content": f"{tok_clean}."},
+        {
+            "role": "assistant",
+            "content": (
+                f"Parfait. Forme exacte: {tok_clean}. "
+                "Garde cette version mot a mot."
             ),
         },
     ]
