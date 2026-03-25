@@ -6,6 +6,8 @@ __pycache__/
 
 # Training artifacts
 qwen25-1.5b-tokipona-lora/
+qwen25-1.5b-tokipona-lora-v2/
+eval_test_full_results.json
 
 # Generated pedagogical splits
 pedagogy_dataset_train.jsonl
