@@ -1,0 +1,10 @@
+{
+  "adapter": "qwen25-1.5b-tokipona-unsloth-v1",
+  "test_file": "pedagogy_dataset_test.jsonl",
+  "num_examples": 508,
+  "max_length": 1024,
+  "batch_size": 2,
+  "avg_loss": 0.18013372137321262,
+  "perplexity": 1.1973774673760826,
+  "evaluated_tokens": 85384
+}
