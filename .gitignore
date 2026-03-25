@@ -13,3 +13,7 @@ eval_test_full_results.json
 pedagogy_dataset_train.jsonl
 pedagogy_dataset_val.jsonl
 pedagogy_dataset_test.jsonl
+
+# Unsloth local compilation cache
+unsloth_compiled_cache/
+unsloth_complied_cache/
