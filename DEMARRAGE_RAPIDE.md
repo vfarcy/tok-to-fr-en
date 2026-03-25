@@ -1,58 +1,47 @@
-# 🚀 DÉMARRAGE RAPIDE
+# Démarrage Rapide
 
-## En 5 minutes ⏱️
+Ce guide est la version courte, à jour, pour relancer un cycle complet sans ambiguïté.
 
-### 1. Vérifier le dataset (1 min)
+## Pré-requis
+
+- Python environnement prêt (`tok-to-fr-en` conseillé)
+- `sentences.csv` et `links.csv` présents à la racine
+- GPU NVIDIA recommandé pour l'entraînement
+
+## Workflow en 6 étapes
+
+### 1) Générer le dataset pédagogique
+
 ```bash
-# Afficher la première paire
-head -n 1 training_data.jsonl
-
-# Compter les paires
-wc -l training_data.jsonl
+python generate_pedagogical_dataset.py \
+  --sentences sentences.csv \
+  --links links.csv \
+  --output pedagogy_dataset.jsonl \
+  --depth 3 \
+  --max-samples 5000
 ```
 
-Résultat attendu: **87,576 paires**
+### 2) Valider le JSONL contre le schéma
 
-### 2. Analyser le dataset (2 min)
 ```bash
-python analyze_jsonl.py training_data.jsonl --samples 10
+python validate_dataset.py --jsonl pedagogy_dataset.jsonl --schema schema.json
 ```
 
-Vous verrez:
-- Statistiques: 87,576 paires, 7.3 MB
-- Exemples: 10 paires aléatoires
-- Validation: ✓ Aucune erreur
+### 3) Split train/val/test sans fuite
 
-### 3. Utiliser avec OpenAI API (1 min)
 ```bash
-# Installation
-pip install openai
-
-# Fine-tuning (voir integration_guide.py)
-# Ou utiliser directement le CLI OpenAI:
-openai api fine_tunes.create \
-  -t training_data_train.jsonl \
-  -v training_data_val.jsonl \
-  -m gpt-3.5-turbo
+python split_pedagogy_jsonl.py pedagogy_dataset.jsonl
 ```
 
-### 4. Utiliser avec HuggingFace (1 min)
+Fichiers produits:
+
+- `pedagogy_dataset_train.jsonl`
+- `pedagogy_dataset_val.jsonl`
+- `pedagogy_dataset_test.jsonl`
+
+### 4) Lancer le fine-tuning LoRA
+
 ```bash
-# Installation
-pip install transformers torch datasets
-
-# Code simple (voir integration_guide.py)
-from datasets import load_dataset
-dataset = load_dataset("json", data_files="training_data.jsonl")
-# ... continuer avec Transformers Trainer
-```
-
-### 5. Fine-tuning local Qwen2.5-1.5B (GPU NVIDIA)
-```bash
-# Dépendances entraînement local
-pip install -r requirements-finetune.txt
-
-# Entraînement LoRA (réglage stable pour RTX 4070 12GB)
 python train_qwen25_lora.py \
   --train-file pedagogy_dataset_train.jsonl \
   --val-file pedagogy_dataset_val.jsonl \
@@ -62,179 +51,40 @@ python train_qwen25_lora.py \
   --grad-accum 16 \
   --max-length 512 \
   --save-steps 50 \
-  --early-stopping-patience 3 \
-  --early-stopping-threshold 0.0005
+  --early-stopping-patience 3
 ```
 
-L'arrêt automatique est basé sur `eval_loss`: si la validation n'améliore plus,
-le run s'arrête et le meilleur checkpoint est restauré.
+Option 4-bit (si VRAM limite): ajouter `--load-in-4bit`.
 
----
-
-## Ce que vous avez ✅
-
-| Item | Détail |
-|------|--------|
-| **Dataset principal** | training_data.jsonl (87,576 paires) |
-| **Train/Val/Test** | Split 80/10/10 automatique |
-| **Format** | JSONL standard (prêt pour fine-tuning) |
-| **Qualité** | Paires réelles de Tatoeba + chaînes indirectes |
-| **Bidirectionnel** | tok→fra ET fra→tok (50/50) |
-| **Scripts** | Pipeline complet + entraînement local Qwen |
-| **Documentation** | 4 guides complets |
-
----
-
-## Exemples de paires 📝
-
-```json
-{"prompt": "mi wile e pan.", "completion": "Je veux du pain."}
-{"prompt": "o!", "completion": "Sois mon invité !"}
-{"prompt": "sewi o!", "completion": "Bon Dieu !"}
-{"prompt": "Merci.", "completion": "mi pana e pona."}
-```
-
----
-
-## Commandes essentielles 💻
+### 5) Tester en chat
 
 ```bash
-# 1. Valider le dataset
-python integration_guide.py
-
-# 2. Analyser en détail
-python analyze_jsonl.py training_data.jsonl --samples 20 --check-dupes
-
-# 3. Régénérer pour autre paire
-python generate_jsonl_advanced.py --source eng --target fra -o eng_fra.jsonl
-
-# 4. Splitter différemment
-python split_jsonl.py training_data.jsonl --train 0.7 --val 0.2 --test 0.1
+python chat_model.py --adapter qwen25-1.5b-tokipona-lora
 ```
 
----
+### 6) Évaluer sur le test set
 
-## Prochaines étapes 📋
+Recommandé: benchmark génération vs réponse attendue sur `pedagogy_dataset_test.jsonl`.
 
-### Option 1: OpenAI (Recommandé)
-1. ✅ Dataset prêt: `training_data_train.jsonl`
-2. → Installer: `pip install openai`
-3. → Copier le code de `integration_guide.py` (section 1)
-4. → Lancer le fine-tuning
-5. → Attendre ~30 min à 2h
+## Points à connaître
 
-### Option 2: HuggingFace
-1. ✅ Dataset prêt: `training_data.jsonl`
-2. → Installer: `pip install transformers torch`
-3. → Copier le code de `integration_guide.py` (section 2)
-4. → Fine-tune sur votre GPU
-5. → Attendre ~2-6h selon matériel
+- Le split pédagogique (`split_pedagogy_jsonl.py`) est obligatoire pour éviter la fuite entre exemples proches.
+- Le générateur pédagogique inclut maintenant des exemples `session_opening` pour gérer les messages du type "je veux apprendre le toki pona".
+- `translation_with_explanation` a été renforcé pour mieux stabiliser la forme exacte de traduction.
 
-### Option 3: CLI OpenAI (Plus simple!)
+## Vérifications rapides
+
 ```bash
-openai api fine_tunes.create \
-  -t training_data_train.jsonl \
-  -v training_data_val.jsonl \
-  -m gpt-3.5-turbo
+wc -l pedagogy_dataset.jsonl
+wc -l pedagogy_dataset_train.jsonl pedagogy_dataset_val.jsonl pedagogy_dataset_test.jsonl
 ```
 
----
+## Si vous reprenez un run interrompu
 
-## FAQ Rapide ❓
-
-**Q: Le dataset est-il directement utilisable?**
-✅ OUI! Format JSONL standard, pas besoin de preprocessing
-
-**Q: Dois-je utiliser les splits?**
-✅ Oui, training_data_train.jsonl pour entraînement, val pour validation
-
-**Q: Comment savoir si ça marche?**
-📊 Comparer tok→fra vs fra→tok performance
-   Tester sur test.jsonl
-   Calculer BLEU/METEOR scores
-
-**Q: Puis-je ajouter plus de données?**
-✅ Oui! `python generate_jsonl_advanced.py` pour générer plus
-   `split_jsonl.py` pour combiner et splitter
-
-**Q: Quelle est la taille minimale/maximale?**
-- Minimum: Même 10 paires peuvent améliorer un peu
-- Maximum: Pas de limite, plus est mieux (jusqu'à un point)
-- Optimal: Pour tok↔fra, 87,576 est très bon!
-
----
-
-## Fichiers importants 📂
-
+```bash
+python train_qwen25_lora.py \
+  --train-file pedagogy_dataset_train.jsonl \
+  --val-file pedagogy_dataset_val.jsonl \
+  --output-dir qwen25-1.5b-tokipona-lora \
+  --resume-from-checkpoint qwen25-1.5b-tokipona-lora/checkpoint-XXXX
 ```
-📦 Ton projet
-├── training_data.jsonl              ← Dataset complet (87,576 paires)
-├── training_data_train.jsonl        ← Pour entraîner 80%
-├── training_data_val.jsonl          ← Pour valider 10%
-├── training_data_test.jsonl         ← Pour tester 10%
-├── generate_jsonl.py                ← Régénérer le dataset
-├── analyze_jsonl.py                 ← Analyser/valider
-├── split_jsonl.py                   ← Splitter autrement
-├── integration_guide.py              ← Exemples fine-tuning
-├── SYNTHESE_FINALE.md               ← Vue d'ensemble
-├── GUIDE_JSONL.md                   ← Guide complet
-└── INDEX.md                         ← Référence
-```
-
----
-
-## Validation en 30 secondes ⚡
-
-```python
-import json
-
-# Vérifier rapidement
-with open("training_data.jsonl") as f:
-    lines = f.readlines()
-    
-print(f"Total paires: {len(lines)}")
-print(f"Première paire:")
-print(json.loads(lines[0]))
-```
-
-Sortie attendue:
-```
-Total paires: 87576
-Première paire:
-{'prompt': '...', 'completion': '...'}
-```
-
----
-
-## Dernier conseil 💡
-
-**Ne pas overcomplicate!**
-
-Le dataset est prêt. Vous pouvez immédiatement:
-1. Copier `training_data_train.jsonl`
-2. L'uploader à OpenAI/HuggingFace
-3. Lancer le fine-tuning
-4. Attendre les résultats
-
-**C'est tout!** 🎉
-
----
-
-## Contact / Questions
-
-Voir `GUIDE_JSONL.md` pour:
-- Troubleshooting détaillé
-- Options avancées
-- Cas d'usage spécifiques
-
-Voir `INDEX.md` pour:
-- Liste complète des fichiers
-- Références rapides
-- Commandes utiles
-
----
-
-**Bonne chance avec ton modèle de traduction tok↔fra!** 🚀
-
-Créé: Mars 2026
-Status: ✅ Production-ready

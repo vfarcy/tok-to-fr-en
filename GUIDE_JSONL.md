@@ -1,176 +1,127 @@
-# Générateur JSONL Bidirectionnel pour Fine-tuning
+# Guide JSONL
 
-## 📋 Vue d'ensemble
+Guide de référence du dépôt pour générer, valider, splitter et entraîner des datasets JSONL.
 
-Ce projet génère un dataset JSONL de haute qualité pour fine-tuner des modèles de traduction. À partir des fichiers Tatoeba `sentences.csv` et `links.csv`, il crée des paires de traduction bidirectionnelles en exploitant **les chaînes de traduction indirectes** (ex: tok → eng → fra).
+## 1. Deux formats de dataset
 
-## 🎯 Caractéristiques principales
+### A. Dataset de traduction brute
 
-✅ **Bidirectionnel** : Génère les deux direaction (tok↔fra)  
-✅ **Chaînes de traduction** : Exploite toutes les connexions (tok→eng→fra)  
-✅ **Optimisé en mémoire** : Charge uniquement les langues nécessaires  
-✅ **Traçabilité** : Affiche la progression et les statistiques  
-✅ **Flexible** : Support de multiples paires de langues  
+- Fichier type: `training_data.jsonl`
+- Format: `{"prompt": "...", "completion": "..."}`
+- Scripts: `generate_jsonl.py`, `generate_jsonl_advanced.py`, `split_jsonl.py`
+- Usage: tâches de traduction simple
 
-## 📊 Résultats pour tok ↔ fra
+### B. Dataset pédagogique conversationnel (recommandé)
 
-```
-Phrases chargées:
-  • tok: 74,577 phrases
-  • fra: 710,037 phrases
-  • eng: 2,016,191 phrases (pivot)
+- Fichier type: `pedagogy_dataset.jsonl`
+- Format: enregistrements multi-tours avec `messages[]`, `lesson`, `pedagogy`, `quality`
+- Scripts: `generate_pedagogical_dataset.py`, `validate_dataset.py`, `split_pedagogy_jsonl.py`, `train_qwen25_lora.py`
+- Usage: modèle tuteur de toki pona pour débutants francophones
 
-Paires générées:
-  • tok → fra: 43,788 paires
-  • fra → tok: 43,788 paires
-  • Total: 87,576 paires
+## 2. Workflow recommandé
 
-Fichier: training_data.jsonl (~10 MB)
-```
-
-## 🚀 Utilisation
-
-### Option 1: Script simple (recommandé pour débuter)
+### Étape 1: Génération
 
 ```bash
-python generate_jsonl.py
-```
-
-Génère `training_data.jsonl` avec la configuration par défaut (tok↔fra, profondeur=4).
-
-### Option 2: Script avancé (configuration personnalisée)
-
-```bash
-# Configuration par défaut
-python generate_jsonl_advanced.py
-
-# Paire de langues personnalisée
-python generate_jsonl_advanced.py --source eng --target fra
-
-# Avec profondeur réducée (plus rapide, moins exhaustif)
-python generate_jsonl_advanced.py --depth 2
-
-# Configuration complète
-python generate_jsonl_advanced.py \
-  --source tok \
-  --target fra \
-  --depth 4 \
-  --output mon_dataset.jsonl \
+python generate_pedagogical_dataset.py \
   --sentences sentences.csv \
-  --links links.csv
+  --links links.csv \
+  --output pedagogy_dataset.jsonl \
+  --depth 3 \
+  --max-samples 5000
 ```
 
-### Options du script avancé
+Options utiles:
 
-| Option | Court | Type | Défaut | Description |
-|--------|-------|------|--------|-------------|
-| `--source` | `-s` | str | tok | Langue source |
-| `--target` | `-t` | str | fra | Langue cible |
-| `--depth` | `-d` | int | 4 | Profondeur de recherche pour chaînes |
-| `--output` | `-o` | str | training_data.jsonl | Fichier de sortie |
-| `--sentences` | - | str | sentences.csv | Fichier d'entrée (phrases) |
-| `--links` | - | str | links.csv | Fichier d'entrée (liens) |
+- `--max-source-sentences`: limiter le scan pour itérations rapides
+- `--min-words-fr`, `--max-words-fr`: borne phrases FR
+- `--min-words-tok`, `--max-words-tok`: borne phrases TOK
+- `--level`: filtrage CECRL (`A0,A1`, etc.)
 
-## 📁 Format du fichier JSONL
-
-Chaque ligne est un objet JSON avec deux champs:
-- **prompt** : La phrase source
-- **completion** : La phrase cible
-
-```json
-{"prompt": "sina kama lon tenpo ike.", "completion": "Tu arrives trop tard."}
-{"prompt": "o!", "completion": "Sois mon invité !"}
-{"prompt": "Tu arrives trop tard.", "completion": "sina kama lon tenpo ike."}
-```
-
-## 🔍 Comment fonctionnent les chaînes de traduction
-
-Le script découvre les traductions **indirectes** via BFS jusqu'à une profondeur maximum:
-
-```
-Exemple avec profondeur=2:
-
-toki pona → Anglais → Français
-    tok        eng        fra
-     ↓         ↓          ↓
- "hello"  →  "hello"  →  "bonjour"
-```
-
-**Résultat**: Une paire tok→fra créée même sans lien direct!
-
-Cela **multiplie le nombre de paires** sans dupliquer les données sources.
-
-## ⚙️ Détails techniques
-
-### Algorithme
-
-1. **Chargement sélectif** : Ne charge que les langues source et cible (+englais comme pont)
-2. **Graphe de liaisons** : Construit un dictionnaire des connexions bidirectionnelles
-3. **BFS pour chaînes** : Pour chaque phrase source, explore tous les chemins vers la langue cible
-4. **Déduplication** : Utilise des `set()` pour éviter les paires dupliquées
-5. **Export JSONL** : Format recommandé pour les APIs OpenAI et équivalentes
-
-### Performance
-
-- **Temps total** : ~15-20 minutes de traitement pour tok↔fra
-- **Mémoire** : ~4-6 GB (beaucoup moins que charger tout le dataset)
-- **Résult précis** : Traduction de phrases complètes contextualisées
-
-## 📦 Dépendances
-
-- Python 3.7+
-- Modules standard: `csv`, `json`, `argparse`, `time`
-- Dépendance externe: `jsonschema` (pour `validate_dataset.py` uniquement)
+### Étape 2: Validation schéma
 
 ```bash
-pip install -r requirements.txt
+python validate_dataset.py --jsonl pedagogy_dataset.jsonl --schema schema.json
 ```
 
-## 🐛 Troubleshooting
+### Étape 3: Split sans fuite
 
-### "Aucune paire de traduction trouvée"
-- Vérifier que les fichiers CSV existent et sont accessibles
-- S'assurer que les codes langue (ex: 'tok', 'fra') sont corrects
-- Vérifier que les fichiers contiennent effectivement des liens
-
-### Les paires ne sont pas trouvées
-- Augmenter `--depth` (par défaut 4)
-- Vérifier que la langue existe: `grep 'tok' sentences.csv | head`
-
-### Lenteur d'exécution
-- Réduire `--depth` (3 ou 2)
-- S'assurer que les fichiers sont sur un disque rapide (SSD)
-
-## 📈 Cas d'usage
-
-✅ Fine-tuning de modèles de traduction automatique  
-✅ Augmentation de datasets bilingues  
-✅ Création de ressources pour langues peu dotées  
-✅ Évaluation de modèles de traduction  
-
-## 📚 Source des données
-
-[Tatoeba Project](https://tatoeba.org/) - 13+ millions de phrases multilingues alignées
-
-## 📝 Licence
-
-Voir la licence Tatoeba: https://tatoeba.org/en/terms_of_use
-
-## ✨ Exemples supplémentaires
-
-### Générer dataset eng↔fra
 ```bash
-python generate_jsonl_advanced.py -s eng -t fra -o eng_fra_dataset.jsonl
+python split_pedagogy_jsonl.py pedagogy_dataset.jsonl
 ```
 
-### Exploration rapide avec profondeur réduite
+Ce script groupe les exemples par paire fr/tok reconstruite pour éviter la fuite entre train/val/test.
+
+### Étape 4: Fine-tuning LoRA
+
 ```bash
-python generate_jsonl_advanced.py -d 2 -o quick_test.jsonl
+python train_qwen25_lora.py \
+  --train-file pedagogy_dataset_train.jsonl \
+  --val-file pedagogy_dataset_val.jsonl \
+  --output-dir qwen25-1.5b-tokipona-lora \
+  --epochs 3 \
+  --batch-size 1 \
+  --grad-accum 16 \
+  --max-length 512 \
+  --save-steps 50 \
+  --early-stopping-patience 3
 ```
 
-### Tous les langues disponibles
-Lancer `python generate_jsonl.py` pour voir la liste complète affichée.
+Option VRAM réduite: `--load-in-4bit`.
 
----
+### Étape 5: Test et benchmark
 
-**Créé avec ❤️ pour les passionnés de traduction et de ML**
+- Test interactif: `python chat_model.py --adapter qwen25-1.5b-tokipona-lora`
+- Évaluation recommandée: benchmark sur `pedagogy_dataset_test.jsonl`
+
+## 3. Types de leçons pédagogiques
+
+Le générateur produit les types suivants:
+
+1. `guided_dialogue`
+2. `pattern_drill`
+3. `error_correction`
+4. `review_recap`
+5. `translation_with_explanation`
+6. `session_opening` (exemples injectés)
+
+Notes importantes:
+
+- `session_opening` couvre les démarrages spontanés (ex: "je veux apprendre le toki pona").
+- `translation_with_explanation` a été renforcé avec recopie exacte et validation finale pour réduire les variations non souhaitées.
+
+## 4. Reprise d'entraînement
+
+```bash
+python train_qwen25_lora.py \
+  --train-file pedagogy_dataset_train.jsonl \
+  --val-file pedagogy_dataset_val.jsonl \
+  --output-dir qwen25-1.5b-tokipona-lora \
+  --resume-from-checkpoint qwen25-1.5b-tokipona-lora/checkpoint-XXXX
+```
+
+## 5. Dépannage rapide
+
+### Erreur mémoire GPU
+
+- Réduire `--batch-size`
+- Augmenter `--grad-accum`
+- Activer `--load-in-4bit`
+
+### Validation schéma échoue
+
+- Relancer `validate_dataset.py`
+- Corriger les lignes indiquées dans la sortie
+
+### Split non cohérent
+
+- Utiliser `split_pedagogy_jsonl.py` pour le dataset pédagogique
+- Garder `split_jsonl.py` pour `training_data.jsonl`
+
+## 6. Commandes de vérification
+
+```bash
+wc -l pedagogy_dataset.jsonl
+wc -l pedagogy_dataset_train.jsonl pedagogy_dataset_val.jsonl pedagogy_dataset_test.jsonl
+python analyze_jsonl.py pedagogy_dataset_train.jsonl --samples 5
+```

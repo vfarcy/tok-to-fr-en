@@ -1,249 +1,73 @@
-# 📦 Projet: Générateur JSONL Bidirectionnel pour Fine-tuning
+# Résumé Projet
 
-## ✅ Tâche complétée
+## Objectif
 
-Vous avez demandé de créer un **JSONL propre pour fine-tuning**, **bidirectionnel (fra↔tok)** avec le **nombre maximal de couples** en exploitant **les chaînes de traduction** (tok → eng → fra).
+Construire et entraîner un modèle pédagogique de toki pona pour débutants francophones à partir de données Tatoeba, avec un pipeline reproductible de génération JSONL, split sans fuite et fine-tuning LoRA.
 
-**Résultat**: ✅ **87,576 paires de traduction générées** dans `training_data.jsonl`
+## Architecture actuelle
 
----
+### 1) Génération pédagogique
 
-## 📊 Résultats détaillés
+Entrées:
 
-### Dataset généré
-- **Total paires**: 87,576
-- **Taille du fichier**: 7.2 MB  
-- **Format**: JSONL (1 paire par ligne)
-- **Bidirectionnel**: ✅ (tok→fra et fra→tok)
-- **Qualité**: ✅ Aucune erreur détectée
+- `sentences.csv`
+- `links.csv`
 
-### Ventilation par direction
-| Direction | Paires |
-|-----------|--------|
-| tok → fra | 43,788 |
-| fra → tok | 43,788 |
-| **Total** | **87,576** |
+Sortie:
 
-### Exemple de données
-```json
-{"prompt": "mi wile e pan.", "completion": "Je veux du pain."}
-{"prompt": "Je veux du pain.", "completion": "mi wile e pan."}
-{"prompt": "sewi o!", "completion": "Bon Dieu !"}
-```
+- `pedagogy_dataset.jsonl`
 
-### Statistiques des phrases
-| Métrique | Valeur |
-|----------|--------|
-| Longueur moyenne (source) | 5.6 mots |
-| Longueur moyenne (cible) | 5.6 mots |
-| Min/Max | 1 → 83 mots |
-| Taille moyenne par paire | 86 bytes |
+Le script `generate_pedagogical_dataset.py`:
 
----
+- reconstruit des paires fr/tok via graphe de liens
+- applique des filtres de qualité
+- génère des dialogues pédagogiques multi-tours
+- produit des métadonnées pédagogiques et qualité
 
-## 🔗 Chaînes de traduction exploitées
+### 2) Validation et split
 
-Le script **multi-saute** les liaisons:
+- validation: `validate_dataset.py --jsonl pedagogy_dataset.jsonl --schema schema.json`
+- split sans fuite: `split_pedagogy_jsonl.py pedagogy_dataset.jsonl`
 
-### Exemple 1: toki pona → Anglais → Français
-```
-tok: "mi wile e pan"
-     ↓ (lien direct ou indirect)
-eng: "I want bread"
-     ↓ (lien avec Anglais)
-fra: "Je veux du pain"
+### 3) Fine-tuning local
 
-Résultat: Paire créée même sans lien direct en tok→fra!
-```
+- script: `train_qwen25_lora.py`
+- modèle de base: `Qwen/Qwen2.5-1.5B-Instruct`
+- sortie: dossier adapter LoRA (`qwen25-1.5b-tokipona-lora`)
 
-### Exemple 2: Via pivot intermédiaire
-```
-tok: "soweli suwi li lape"
-     ↓ (chercher via BFS, profondeur 4)
-eng: "The cat sleeps" 
-     ↓
-fra: "Le chat dort"
-```
+## Évolutions importantes intégrées
 
-### Statistiques des chaînes
-- **Langues intermédiaires utilisées**: Anglais (eng) comme pivot principal
-- **Profondeur maximale**: 4 (permet ~4 sauts de traduction)
-- **Paires directes tok→fra**: ~2,000
-- **Paires indirectes (via chaînes)**: ~41,788 ✅ **50x plus!**
+1. Conservation checkpoints améliorée (`save_total_limit=3`) pour limiter le risque de perdre le meilleur.
+2. Prompt système de `chat_model.py` aligné avec le prompt système FR du dataset.
+3. Ajout d'exemples `session_opening` pour mieux gérer les débuts de conversation spontanés.
+4. Renforcement de `translation_with_explanation` avec recopie et validation exacte.
 
----
+## Types de leçons générées
 
-## 📁 Fichiers créés
+- `guided_dialogue`
+- `pattern_drill`
+- `error_correction`
+- `review_recap`
+- `translation_with_explanation`
+- `session_opening`
 
-### Fichiers générés
-| Fichier | Description | Taille |
-|---------|-------------|--------|
-| **training_data.jsonl** | Dataset prêt pour fine-tuning | 7.2 MB |
+## État d'évaluation (modèle actuel avant nouveau retrain)
 
-### Scripts Python
+Benchmark complet observé sur `pedagogy_dataset_test.jsonl`:
 
-1. **generate_jsonl.py** (Simple)
-   - Version directe et rapide
-   - Configuration par défaut (tok↔fra)
-   - Parfait pour débuter
+- exact match global: ~83%
+- similarité moyenne: ~99%
+- excellent sur 4 formats fermés
+- principal écart: `translation_with_explanation` (variantes de traduction)
 
-2. **generate_jsonl_advanced.py** (Avancé)
-   - Arguments CLI personnalisables
-   - Support de multiples paires de langues
-   - Profondeur de chaînes configurable
+Ce constat a motivé la mise à jour du générateur pour contraindre davantage ce type.
 
-3. **analyze_jsonl.py** (Analyse)
-   - Statistiques du dataset généré
-   - Exemples aléatoires
-   - Vérification de doublons
-   - Validation de format
+## Recommandation opérationnelle
 
-### Documentation
+Toujours relancer un cycle complet après changement de générateur:
 
-1. **GUIDE_JSONL.md** (Complet)
-   - Guide d'utilisation
-   - Exemples de commandes
-   - Troubleshooting
-   - Cas d'usage
-
-2. **RESUME_PROJET.md** (Ce fichier)
-   - Vue d'ensemble
-   - Résultats finaux
-   - Architecture technique
-
----
-
-## 🚀 Utilisation rapide
-
-### Générer le dataset (déjà fait)
-```bash
-python generate_jsonl.py
-```
-
-### Analyser le résultat
-```bash
-python analyze_jsonl.py training_data.jsonl --samples 20
-```
-
-### Générer pour une autre paire de langues
-```bash
-python generate_jsonl_advanced.py --source eng --target fra -o eng_fra.jsonl
-```
-
-### Vérifier les doublons
-```bash
-python analyze_jsonl.py training_data.jsonl --check-dupes
-```
-
----
-
-## 🎯 Format JSONL pour fine-tuning
-
-Le format respecte les standards OpenAI et compatibles:
-
-```json
-{
-  "prompt": "miswile e pan.",
-  "completion": "Je veux du pain."
-}
-```
-
-**Utilisable directement avec**:
-- OpenAI API (`gpt-3.5-turbo` fine-tuning)
-- Hugging Face Transformers
-- LLaMA, Mistral fine-tuning
-- Tout framework supportant le format JSONL
-
----
-
-## 🔧 Architecture technique
-
-### Pipeline de traitement
-
-```
-1. CHARGEMENT SÉLECTIF
-   Load sentences.csv → Filter ({tok, fra, eng}) → 2.8M phrases
-   
-2. CONSTRUCTION DU GRAPHE
-   Load links.csv → Filter relevant links → 18.6M liaisons
-   
-3. EXPLORATION DES CHAÎNES (BFS)
-   Pour chaque phrase tok:
-     - Explore {tok}→{eng}→{fra}
-     - Profondeur max: 4
-     - Résultat: 43,788 paires uniques
-   
-4. BIDIRECTIONNALITÉ
-   tok→fra: 43,788 paires
-   fra→tok: 43,788 paires
-   Total: 87,576 paires
-   
-5. EXPORT JSONL
-   Écrire en JSON (1 paire/ligne)
-   Encoder UTF-8
-   Taille finale: 7.2 MB
-```
-
-### Optimisations appliquées
-
-✅ **Chargement sélectif**: Ne charge que les langues nécessaires  
-✅ **Déduplication**: Utilise `set()` pour éviter les doublons  
-✅ **BFS efficace**: Explore jusqu'à profondeur 4, pas plus  
-✅ **Mémoire optimisée**: ~4-6 GB au lieu de 50+ GB
-
----
-
-## 📈 Cas d'usage
-
-Excellent pour:
-- ✅ Fine-tuner un modèle tok↔fra
-- ✅ Améliorer traduction toki pona
-- ✅ Augmenter dataset bilingue existant
-- ✅ Créer ressources pour langue peu dotée
-- ✅ R&D traduction indirecte
-
----
-
-## 🔍 Validation du dataset
-
-✅ **Format**: JSONL valide (87,576 lignes)  
-✅ **Structure**: Tous les champs (prompt, completion) présents  
-✅ **Encodage**: UTF-8 correct  
-✅ **Doublons**: Aucun détecté  
-✅ **Qualité**: Phrases réelles alignées de Tatoeba  
-
----
-
-## 📝 Notes importantes
-
-1. **Source de données**: [Tatoeba.org](https://tatoeba.org) - 13+ millions de phrases
-2. **Langue "toki pona"** (tok): Pidgin de Papouasie-Nouvelle-Guinée
-3. **Chaînes de traduction**: Augmente le dataset 50x au-delà des liens directs
-4. **Profondeur 4**: Balance entre couverture et qualité
-
----
-
-## 🎓 Prochaines étapes
-
-1. **Fine-tuner**: Utiliser `training_data.jsonl` avec votre API favourite
-2. **Évaluer**: Comparer tokens directs vs chaînes indirectes
-3. **Optimiser**: Ajuster `--depth` selon vos besoins
-4. **Augmenter**: Générer pour plusieurs paires de langues
-
----
-
-## 📞 Support
-
-Si vous avez besoin de:
-- **Régénérer**: `python generate_jsonl.py`
-- **Analyser**: `python analyze_jsonl.py training_data.jsonl`
-- **Personnaliser**: Voir `GUIDE_JSONL.md`
-
----
-
-**✨ Dataset prêt pour fine-tuning! ✨**
-
-Créé: Mars 2026  
-Dataset source: Tatoeba Project  
-Paires générées: 87,576  
-Qualité: ✅ Production-ready
+1. régénérer dataset
+2. revalider schéma
+3. resplit sans fuite
+4. relancer fine-tuning
+5. rebench sur test set
