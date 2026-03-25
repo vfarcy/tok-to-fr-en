@@ -1,0 +1,66 @@
+{
+  "dataset": "pedagogy_dataset_test.jsonl",
+  "adapter": "qwen25-1.5b-tokipona-lora-v2",
+  "n": 508,
+  "strict_exact": 505,
+  "lenient_exact": 505,
+  "avg_similarity": 0.9967424637503216,
+  "per_type": {
+    "error_correction": {
+      "n": 101,
+      "strict_exact": 101,
+      "lenient_exact": 101,
+      "avg_similarity": 1.0
+    },
+    "guided_dialogue": {
+      "n": 98,
+      "strict_exact": 98,
+      "lenient_exact": 98,
+      "avg_similarity": 1.0
+    },
+    "pattern_drill": {
+      "n": 98,
+      "strict_exact": 98,
+      "lenient_exact": 98,
+      "avg_similarity": 1.0
+    },
+    "review_recap": {
+      "n": 98,
+      "strict_exact": 98,
+      "lenient_exact": 98,
+      "avg_similarity": 1.0
+    },
+    "session_opening": {
+      "n": 3,
+      "strict_exact": 0,
+      "lenient_exact": 0,
+      "avg_similarity": 0.4483905283877994
+    },
+    "translation_with_explanation": {
+      "n": 110,
+      "strict_exact": 110,
+      "lenient_exact": 110,
+      "avg_similarity": 1.0
+    }
+  },
+  "sample_errors": [
+    {
+      "lesson_type": "session_opening",
+      "target": "Bien ! mi tawa c'est une des bases du toki pona. Pret pour la suite ?",
+      "pred": "Tres bien ! Mini recap : mi tawa = je marche. Pret pour la suite ?",
+      "similarity": 0.5954198473282443
+    },
+    {
+      "lesson_type": "session_opening",
+      "target": "Tres bien ! suno est acquis. On passe a la prochaine ?",
+      "pred": "Parfait ! tu as maigris la prononciation. Pret pour une autre phrase du meme type ?",
+      "similarity": 0.3157894736842105
+    },
+    {
+      "lesson_type": "session_opening",
+      "target": "Parfait ! Tu retiens bien. On continue avec une nouvelle phrase ?",
+      "pred": "Parfait ! lili = petit. On passe a la suite ?",
+      "similarity": 0.4339622641509434
+    }
+  ]
+}
