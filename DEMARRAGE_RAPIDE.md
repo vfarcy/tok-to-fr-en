@@ -8,6 +8,32 @@ Ce guide est la version courte, à jour, pour relancer un cycle complet sans amb
 - `sentences.csv` et `links.csv` présents à la racine
 - GPU NVIDIA recommandé pour l'entraînement
 
+## Télécharger les CSV Tatoeba
+
+Si vous n'avez pas encore les CSV:
+
+```bash
+mkdir -p tatoeba_tmp && cd tatoeba_tmp
+
+wget https://downloads.tatoeba.org/exports/sentences.tar.bz2
+wget https://downloads.tatoeba.org/exports/links.tar.bz2
+
+tar -xjf sentences.tar.bz2
+tar -xjf links.tar.bz2
+
+mv sentences.csv ../sentences.csv
+mv links.csv ../links.csv
+
+cd ..
+rm -rf tatoeba_tmp
+```
+
+Vérifier la présence des fichiers:
+
+```bash
+ls -lh sentences.csv links.csv
+```
+
 ## Workflow en 6 étapes
 
 ### 1) Générer le dataset pédagogique

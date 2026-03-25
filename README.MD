@@ -24,6 +24,55 @@ Le flux `training_data.jsonl` (paires `prompt/completion`) reste disponible pour
 - `pedagogy_dataset.jsonl`: dataset pédagogique source
 - `pedagogy_dataset_train.jsonl`, `pedagogy_dataset_val.jsonl`, `pedagogy_dataset_test.jsonl`: splits
 
+## Obtenir les CSV depuis Tatoeba
+
+Les deux fichiers nécessaires sont:
+
+- `sentences.csv`
+- `links.csv`
+
+### Option A: wget
+
+```bash
+mkdir -p tatoeba_tmp && cd tatoeba_tmp
+
+wget https://downloads.tatoeba.org/exports/sentences.tar.bz2
+wget https://downloads.tatoeba.org/exports/links.tar.bz2
+
+tar -xjf sentences.tar.bz2
+tar -xjf links.tar.bz2
+
+mv sentences.csv ../sentences.csv
+mv links.csv ../links.csv
+
+cd ..
+rm -rf tatoeba_tmp
+```
+
+### Option B: curl
+
+```bash
+mkdir -p tatoeba_tmp && cd tatoeba_tmp
+
+curl -LO https://downloads.tatoeba.org/exports/sentences.tar.bz2
+curl -LO https://downloads.tatoeba.org/exports/links.tar.bz2
+
+tar -xjf sentences.tar.bz2
+tar -xjf links.tar.bz2
+
+mv sentences.csv ../sentences.csv
+mv links.csv ../links.csv
+
+cd ..
+rm -rf tatoeba_tmp
+```
+
+Vérification:
+
+```bash
+ls -lh sentences.csv links.csv
+```
+
 ## Démarrage rapide
 
 ### 1) Génération dataset pédagogique

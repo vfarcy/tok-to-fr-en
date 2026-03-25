@@ -20,6 +20,39 @@ Guide de référence du dépôt pour générer, valider, splitter et entraîner 
 
 ## 2. Workflow recommandé
 
+## 0. Récupérer les données source Tatoeba
+
+Le projet utilise:
+
+- `sentences.csv` depuis `https://downloads.tatoeba.org/exports/sentences.tar.bz2`
+- `links.csv` depuis `https://downloads.tatoeba.org/exports/links.tar.bz2`
+
+Commandes:
+
+```bash
+mkdir -p tatoeba_tmp && cd tatoeba_tmp
+
+wget https://downloads.tatoeba.org/exports/sentences.tar.bz2
+wget https://downloads.tatoeba.org/exports/links.tar.bz2
+
+tar -xjf sentences.tar.bz2
+tar -xjf links.tar.bz2
+
+mv sentences.csv ../sentences.csv
+mv links.csv ../links.csv
+
+cd ..
+rm -rf tatoeba_tmp
+```
+
+Contrôle rapide:
+
+```bash
+ls -lh sentences.csv links.csv
+```
+
+Si `wget` n'est pas disponible, remplacer par `curl -LO <url>`.
+
 ### Étape 1: Génération
 
 ```bash
