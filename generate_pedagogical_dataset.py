@@ -58,6 +58,64 @@ TOKI_PONA_CHARS_RE = re.compile(r"^[a-zA-Z\s.,!?':;\-]+$")
 MULTISPACE_RE = re.compile(r"\s+")
 TERMINAL_PUNCT_RE = re.compile(r"[\s.!?]+$")
 
+# ---------------------------------------------------------------------------
+# Session-opening examples: phrases qu'un debutant peut dire pour commencer.
+# Chaque tuple: (message utilisateur, traduction fr courte, phrase toki pona)
+# ---------------------------------------------------------------------------
+SESSION_OPENINGS: List[Tuple[str, str, str]] = [
+    ("Je veux apprendre le toki pona.", "je parle", "mi toki"),
+    ("Bonjour, je debute en toki pona.", "bonjour", "toki"),
+    ("Salut, je suis debutant en toki pona.", "je suis", "mi"),
+    ("Comment on commence le toki pona ?", "bien", "pona"),
+    ("C'est quoi le toki pona ?", "je mange", "mi moku"),
+    ("Peux-tu m'apprendre le toki pona ?", "eau", "telo"),
+    ("Je commence aujourd'hui.", "maison", "tomo"),
+    ("On peut commencer la lecon ?", "ami", "jan pona"),
+    ("Je decouvre le toki pona.", "soleil", "suno"),
+    ("Aide-moi a apprendre le toki pona.", "je dors", "mi lape"),
+    ("Je veux apprendre cette langue.", "je marche", "mi tawa"),
+    ("Tu peux me donner ma premiere lecon ?", "enfant", "jan lili"),
+    ("Par ou est-ce qu'on commence ?", "je me sens bien", "mi pona"),
+    ("Montre-moi quelques mots de toki pona.", "quelqu'un", "jan"),
+    ("Je suis completement nouveau en toki pona.", "je t'aime", "mi olin e sina"),
+    ("J'ai envie d'apprendre une nouvelle langue.", "grand", "suli"),
+    ("Explique-moi comment fonctionne le toki pona.", "aller", "tawa"),
+    ("Je suis completement debutant.", "petit", "lili"),
+    ("On commence ?", "je regarde", "mi lukin"),
+    ("Montre-moi comment fonctionne le toki pona.", "lumiere", "suno"),
+]
+
+OPENING_INTRO_TEMPLATES: List[str] = [
+    (
+        "Bienvenue ! Le toki pona est une langue de 120 mots, tres simple a prononcer. "
+        "On commence par : {fr} = {tok}. Repete a voix haute : {tok}."
+    ),
+    (
+        "Avec plaisir ! Le toki pona se lit exactement comme il s'ecrit. "
+        "Ta premiere phrase : \"{fr}\" se dit \"{tok}\". Dis-la une fois."
+    ),
+    (
+        "Super choix ! En toki pona, tout est court et clair. "
+        "Premier element du jour : {tok} signifie {fr}. A toi, repete : {tok}."
+    ),
+    (
+        "Tres bien ! On y va pas a pas. "
+        "En toki pona : {fr} = {tok}. C'est ta premiere phrase. Repete-la a voix haute."
+    ),
+    (
+        "Bien sur ! Le toki pona est une langue minimaliste : seulement 120 mots. "
+        "On commence par le plus simple : {fr} se dit {tok}. Dis-la une fois."
+    ),
+]
+
+OPENING_CONFIRM_TEMPLATES: List[str] = [
+    "Bien ! {tok} c'est une des bases du toki pona. Pret pour la suite ?",
+    "Parfait ! Tu retiens bien. On continue avec une nouvelle phrase ?",
+    "Excellent ! {tok} est bien prononce. On enchaine ?",
+    "Tres bien ! {tok} est acquis. On passe a la prochaine ?",
+    "Bien joue ! Mini recap : {tok} = {fr}. Pret pour une autre phrase ?",
+]
+
 
 def normalize_text(text: str) -> str:
     text = text.strip()
@@ -391,6 +449,21 @@ def make_messages(lesson_type: str, fr_text: str, tok_text: str) -> List[Dict[st
     ]
 
 
+def make_session_opening_messages(
+    user_opening: str, fr_phrase: str, tok_phrase: str, rng: random.Random
+) -> List[Dict[str, str]]:
+    """Build a session-opening dialogue where the user starts the session spontaneously."""
+    intro = rng.choice(OPENING_INTRO_TEMPLATES).format(fr=fr_phrase, tok=tok_phrase)
+    confirm = rng.choice(OPENING_CONFIRM_TEMPLATES).format(fr=fr_phrase, tok=tok_phrase)
+    return [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": user_opening},
+        {"role": "assistant", "content": intro},
+        {"role": "user", "content": f"{tok_phrase}."},
+        {"role": "assistant", "content": confirm},
+    ]
+
+
 def lesson_plan_for_type(lesson_type: str) -> Tuple[str, List[str], bool, bool, bool, int, str]:
     if lesson_type == "guided_dialogue":
         return (
@@ -440,6 +513,18 @@ def lesson_plan_for_type(lesson_type: str) -> Tuple[str, List[str], bool, bool, 
         False,
         2,
         "Traduire une phrase et donner une explication pedagogique courte.",
+    )
+
+
+def lesson_plan_for_opening() -> Tuple[str, List[str], bool, bool, bool, int, str]:
+    return (
+        "ouverture_session",
+        ["vocabulaire_de_base", "accueil"],
+        True,
+        False,
+        False,
+        1,
+        "Accueillir un debutant et introduire la premiere phrase.",
     )
 
 
@@ -521,6 +606,44 @@ def write_jsonl(records: Sequence[dict], output_file: Path) -> None:
     with output_file.open("w", encoding="utf-8") as fh:
         for record in records:
             fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def build_opening_samples(rng: random.Random) -> List[dict]:
+    """Generate one training example per session-opening phrase."""
+    topic, skills, expects_prod, includes_corr, includes_recap, difficulty, objective = lesson_plan_for_opening()
+    records: List[dict] = []
+    for idx, (user_msg, fr_phrase, tok_phrase) in enumerate(SESSION_OPENINGS, start=1):
+        sample = {
+            "schema_version": "1.0",
+            "sample_id": f"OPEN_{idx:04d}",
+            "lesson": {
+                "lesson_id": "L_OPEN",
+                "lesson_type": "session_opening",
+                "level": "A0",
+                "topic": topic,
+                "objective": objective,
+            },
+            "language": {
+                "source_language": "fr",
+                "target_language": "tok",
+            },
+            "messages": make_session_opening_messages(user_msg, fr_phrase, tok_phrase, rng),
+            "pedagogy": {
+                "skills": skills,
+                "difficulty": difficulty,
+                "expects_student_production": expects_prod,
+                "includes_correction": includes_corr,
+                "includes_recap": includes_recap,
+            },
+            "quality": {
+                "safe_for_beginners": True,
+                "no_vulgarity": True,
+                "no_hate": True,
+                "max_new_concepts": 1,
+            },
+        }
+        records.append(sample)
+    return records
 
 
 def parse_args() -> argparse.Namespace:
@@ -650,6 +773,21 @@ def main() -> int:
 
     print("[5/5] Generating pedagogical dialogues...")
     records = generate_samples(filtered_pairs, max_samples=args.max_samples, seed=args.seed)
+
+    # Inject session-opening examples distributed evenly across the dataset.
+    opening_records = build_opening_samples(random.Random(args.seed + 1))
+    if opening_records:
+        n_open = len(opening_records)
+        step = max(1, len(records) // n_open)
+        enriched: List[dict] = []
+        for i, rec in enumerate(records):
+            if i % step == 0 and opening_records:
+                enriched.append(opening_records.pop(0))
+            enriched.append(rec)
+        enriched.extend(opening_records)  # any leftover at the end
+        records = enriched
+        print(f"  Injected {n_open} session-opening examples.")
+
     write_jsonl(records, output_file)
 
     elapsed = time.time() - start
