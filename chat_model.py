@@ -17,6 +17,31 @@ from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
 
 
+DRILL_SEQUENCE = [
+    ("Je parle.", "mi toki"),
+    ("Je mange.", "mi moku"),
+    ("Je dors.", "mi lape"),
+    ("Je viens.", "mi kama"),
+    ("Je veux manger.", "mi wile moku"),
+]
+
+ACK_WORDS = {
+    "oui",
+    "oui.",
+    "ok",
+    "d'accord",
+    "daccord",
+    "laquelle",
+    "laquelle?",
+    "laquelle ?",
+    "alors",
+    "alors?",
+    "alors ?",
+    "ensuite",
+    "la suite",
+}
+
+
 def parse_args():
     p = argparse.ArgumentParser(description="Chat interactif avec le modèle LoRA fine-tuné")
     p.add_argument(
@@ -38,7 +63,9 @@ def parse_args():
             "Regles strictes: n'invente jamais une traduction ni une regle. "
             "Si tu es incertain, dis-le explicitement et demande une clarification "
             "au lieu d'affirmer. N'annonce pas \"correct\" si tu n'es pas sur. "
-            "Utilise le mot 'phrase' ou 'exemple', jamais 'meme'."
+            "Utilise le mot 'phrase' ou 'exemple', jamais 'meme'. "
+            "Ne repete pas la meme phrase deux tours de suite. "
+            "Si l'utilisateur dit 'oui' ou 'd'accord', propose une nouvelle phrase differente."
         ),
         help="Prompt système",
     )
@@ -77,11 +104,26 @@ def main():
     model = PeftModel.from_pretrained(base, args.adapter)
     model.eval()
 
+    # Avoid noisy warnings from stale generation defaults when running greedy decoding.
+    if hasattr(model, "generation_config") and model.generation_config is not None:
+        model.generation_config.top_k = None
+        model.generation_config.top_p = None
+
     device = next(model.parameters()).device
     print(f"Modèle prêt sur {device}.")
     print("Tape 'quit' ou 'exit' pour quitter, 'reset' pour recommencer la conversation.\n")
 
     history = [{"role": "system", "content": args.system}]
+    last_assistant = ""
+    expected_phrase = ""
+    drill_index = 0
+
+    def next_drill_message() -> str:
+        nonlocal drill_index, expected_phrase
+        fr, tok = DRILL_SEQUENCE[drill_index % len(DRILL_SEQUENCE)]
+        drill_index += 1
+        expected_phrase = tok.lower().strip()
+        return f'Nouvelle phrase: "{fr}" se dit: {tok}. Repete a voix haute: {tok}.'
 
     while True:
         try:
@@ -97,7 +139,31 @@ def main():
             break
         if user_input.lower() == "reset":
             history = [{"role": "system", "content": args.system}]
+            last_assistant = ""
+            expected_phrase = ""
+            drill_index = 0
             print("[Conversation réinitialisée]")
+            continue
+
+        user_norm = user_input.lower().strip()
+
+        # Guardrail anti-boucle: si l'utilisateur acquiesce sans contenu,
+        # proposer explicitement une nouvelle phrase valide au lieu de répéter.
+        if user_norm in ACK_WORDS:
+            forced = next_drill_message()
+            print(f"Modèle: {forced}\n")
+            history.append({"role": "user", "content": user_input})
+            history.append({"role": "assistant", "content": forced})
+            last_assistant = forced
+            continue
+
+        # Si l'utilisateur répète la phrase attendue, valider proprement.
+        if expected_phrase and user_norm == expected_phrase:
+            forced = f"Parfait. Phrase valide: {expected_phrase}. {next_drill_message()}"
+            print(f"Modèle: {forced}\n")
+            history.append({"role": "user", "content": user_input})
+            history.append({"role": "assistant", "content": forced})
+            last_assistant = forced
             continue
 
         history.append({"role": "user", "content": user_input})
@@ -114,16 +180,18 @@ def main():
             skip_special_tokens=True,
         )
 
+        do_sample = args.temperature > 0
         generation_kwargs = dict(
             **inputs,
             max_new_tokens=args.max_new_tokens,
-            do_sample=args.temperature > 0,
-            temperature=args.temperature if args.temperature > 0 else 1.0,
-            top_p=args.top_p,
+            do_sample=do_sample,
             pad_token_id=tokenizer.eos_token_id,
             eos_token_id=tokenizer.eos_token_id,
             streamer=streamer,
         )
+        if do_sample:
+            generation_kwargs["temperature"] = args.temperature
+            generation_kwargs["top_p"] = args.top_p
 
         thread = Thread(target=model.generate, kwargs=generation_kwargs)
         thread.start()
@@ -136,8 +204,15 @@ def main():
         thread.join()
 
         answer = "".join(chunks).strip()
+
+        # Filet de securite: si le modele recopie literalement une relance vide,
+        # on remplace par une relance pedagogique valide.
+        if "phrase tres proche est" in answer.lower() and user_norm in ACK_WORDS:
+            answer = next_drill_message()
+
         print("\n")
         history.append({"role": "assistant", "content": answer})
+        last_assistant = answer
 
 
 if __name__ == "__main__":
