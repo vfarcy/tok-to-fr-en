@@ -8,6 +8,36 @@ Ce guide est la version courte, à jour, pour relancer un cycle complet sans amb
 - `sentences.csv` et `links.csv` présents à la racine
 - GPU NVIDIA recommandé pour l'entraînement
 
+### Pré-requis Unsloth + FlashAttention (recommandé)
+
+```bash
+source ~/miniforge3/etc/profile.d/conda.sh
+conda activate tok-to-fr-en
+
+pip install -r requirements-unsloth.txt
+```
+
+Compiler FlashAttention pour l'architecture GPU locale.
+Pour RTX 4070 (Ada), utiliser `sm_89`:
+
+```bash
+export CUDA_HOME="$CONDA_PREFIX"
+export CUDA_PATH="$CONDA_PREFIX"
+export CPLUS_INCLUDE_PATH="$CONDA_PREFIX/include"
+export C_INCLUDE_PATH="$CONDA_PREFIX/include"
+export FLASH_ATTN_CUDA_ARCHS='89'
+export NVCC_THREADS=4
+export MAX_JOBS=4
+
+pip install flash-attn --no-build-isolation
+```
+
+Vérification:
+
+```bash
+python -c "import flash_attn; print(flash_attn.__version__)"
+```
+
 ## Télécharger les CSV Tatoeba
 
 Si vous n'avez pas encore les CSV:
@@ -81,6 +111,20 @@ python train_qwen25_lora.py \
 ```
 
 Option 4-bit (si VRAM limite): ajouter `--load-in-4bit`.
+
+Commande recommandée avec Unsloth + FlashAttention:
+
+```bash
+python train_qwen25_unsloth.py \
+  --train-file pedagogy_dataset_train.jsonl \
+  --val-file pedagogy_dataset_val.jsonl \
+  --output-dir qwen25-1.5b-tokipona-unsloth-v1 \
+  --epochs 3 \
+  --max-length 384 \
+  --batch-size 2 \
+  --grad-accum 8 \
+  --save-steps 200
+```
 
 ### 5) Tester en chat
 

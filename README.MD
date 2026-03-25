@@ -75,6 +75,38 @@ ls -lh sentences.csv links.csv
 
 ## Démarrage rapide
 
+### 0) Installer l'environnement Unsloth + FlashAttention
+
+Activer l'environnement conda (exemple: `tok-to-fr-en`) puis installer les dépendances:
+
+```bash
+source ~/miniforge3/etc/profile.d/conda.sh
+conda activate tok-to-fr-en
+
+pip install -r requirements-unsloth.txt
+```
+
+Compiler ensuite FlashAttention pour l'architecture GPU locale.
+Pour une RTX 4070, utiliser `sm_89`:
+
+```bash
+export CUDA_HOME="$CONDA_PREFIX"
+export CUDA_PATH="$CONDA_PREFIX"
+export CPLUS_INCLUDE_PATH="$CONDA_PREFIX/include"
+export C_INCLUDE_PATH="$CONDA_PREFIX/include"
+export FLASH_ATTN_CUDA_ARCHS='89'
+export NVCC_THREADS=4
+export MAX_JOBS=4
+
+pip install flash-attn --no-build-isolation
+```
+
+Vérifier l'installation:
+
+```bash
+python -c "import flash_attn; print(flash_attn.__version__)"
+```
+
 ### 1) Génération dataset pédagogique
 
 ```bash
@@ -111,6 +143,20 @@ python train_qwen25_lora.py \
   --max-length 512 \
   --save-steps 50 \
   --early-stopping-patience 3
+```
+
+Alternative recommandée avec Unsloth + FlashAttention:
+
+```bash
+python train_qwen25_unsloth.py \
+  --train-file pedagogy_dataset_train.jsonl \
+  --val-file pedagogy_dataset_val.jsonl \
+  --output-dir qwen25-1.5b-tokipona-unsloth-v1 \
+  --epochs 3 \
+  --max-length 384 \
+  --batch-size 2 \
+  --grad-accum 8 \
+  --save-steps 200
 ```
 
 Option VRAM réduite:
