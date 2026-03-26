@@ -4,16 +4,33 @@ links.csv
 __pycache__/
 *.pyc
 
-# Training artifacts
+# Training artifacts (adapters + checkpoints — never versioned)
 qwen25-1.5b-tokipona-lora/
 qwen25-1.5b-tokipona-lora-v2/
 qwen25-1.5b-tokipona-unsloth-v1/
+qwen25-1.5b-tokipona-unsloth-v1-smoke/
+qwen25-1.5b-tokipona-unsloth-A01/
+qwen25-1.5b-tokipona-unsloth-A012/
+qwen25-1.5b-tokipona-unsloth-final/
+tmp-unsloth-check/
 eval_test_full_results.json
 
-# Generated pedagogical splits
+# Generated pedagogical datasets (heavy, regenerable)
 pedagogy_dataset_train.jsonl
 pedagogy_dataset_val.jsonl
 pedagogy_dataset_test.jsonl
+pedagogy_dataset_A01.jsonl
+pedagogy_dataset_A01_train.jsonl
+pedagogy_dataset_A01_val.jsonl
+pedagogy_dataset_A01_test.jsonl
+pedagogy_dataset_A012.jsonl
+pedagogy_dataset_A012_train.jsonl
+pedagogy_dataset_A012_val.jsonl
+pedagogy_dataset_A012_test.jsonl
+pedagogy_dataset_final.jsonl
+pedagogy_dataset_final_train.jsonl
+pedagogy_dataset_final_val.jsonl
+pedagogy_dataset_final_test.jsonl
 
 # Unsloth local compilation cache
 unsloth_compiled_cache/
