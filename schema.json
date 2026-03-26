@@ -20,7 +20,7 @@
     },
     "sample_id": {
       "type": "string",
-      "pattern": "^L[0-9]{3}_[0-9]{4,5}$"
+      "pattern": "^(L[0-9]{3}_[0-9]{4,5}|OPEN_[0-9]{4})$"
     },
     "lesson": {
       "type": "object",
@@ -35,7 +35,7 @@
       "properties": {
         "lesson_id": {
           "type": "string",
-          "pattern": "^L[0-9]{3}$"
+          "pattern": "^(L[0-9]{3}|L_OPEN)$"
         },
         "lesson_type": {
           "type": "string",
@@ -46,7 +46,8 @@
             "error_correction",
             "review_recap",
             "controlled_composition",
-            "translation_with_explanation"
+            "translation_with_explanation",
+            "session_opening"
           ]
         },
         "level": {
@@ -167,7 +168,8 @@
               "prepositions",
               "vocabulaire_de_base",
               "reformulation",
-              "correction"
+              "correction",
+              "accueil"
             ]
           },
           "uniqueItems": true
