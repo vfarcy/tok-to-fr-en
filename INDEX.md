@@ -25,36 +25,46 @@ Référence rapide des fichiers et flux du projet.
 
 ## Scripts entraînement / test
 
-- `train_qwen25_lora.py`: entraînement LoRA local Qwen2.5-1.5B
+- `train_qwen25_unsloth.py`: entraînement Unsloth LoRA Qwen2.5-1.5B **(script principal)**
+- `train_qwen25_lora.py`: entraînement LoRA standard (conservé pour référence)
+- `eval_adapter.py`: évaluation quantitative sur test set figé (perplexité)
 - `chat_model.py`: chat interactif sur adapter fine-tuné
+
+## Datasets curriculum (branch experiment/curriculum-v2-plan)
+
+- `pedagogy_dataset_A01.jsonl` + splits — run A (A0,A1, perplexité 1.2032)
+- `pedagogy_dataset_A012.jsonl` + splits — run B (A0,A1,A2, perplexité 1.2032)
+- `pedagogy_dataset_final.jsonl` + splits — run C/final (all, perplexité 1.1897)
+- `eval_test_unsloth_A01_metrics.json`: métriques run A
+- `eval_test_unsloth_A012_metrics.json`: métriques run B
+- `eval_test_unsloth_final_metrics.json`: métriques run C
+- `pedagogy_dataset_test.jsonl`: **test set figé (508 exemples)**
 
 ## Documentation
 
-- `README.MD`: vue générale
+- `README.MD`: vue générale et commandes à jour
 - `DEMARRAGE_RAPIDE.md`: exécution rapide du pipeline
 - `GUIDE_JSONL.md`: détails techniques et options
-- `RESUME_PROJET.md`: résumé technique courant
-- `SYNTHESE_FINALE.md`: synthèse opérationnelle
+- `RESUME_PROJET.md`: résumé technique + résultats runs
+- `SYNTHESE_FINALE.md`: synthèse opérationnelle + défaut connu
+- `PLAN_MONTER_D_UN_CRAN_SAME_LLM.md`: micro-plan v3 + checklist
 
 ## Workflow recommandé
 
 1. `generate_pedagogical_dataset.py`
 2. `validate_dataset.py`
 3. `split_pedagogy_jsonl.py`
-4. `train_qwen25_lora.py`
-5. `chat_model.py` + benchmark test set
+4. `train_qwen25_unsloth.py`
+5. `eval_adapter.py` sur `pedagogy_dataset_test.jsonl`
+6. `chat_model.py` — smoke test 5 prompts fixes
 
-## Checklist opérationnelle
+## Checklist opérationnelle (v3)
 
-- [ ] Générer `pedagogy_dataset.jsonl`
+- [ ] Générer `pedagogy_dataset_v3.jsonl` (seed 100, all, 6 000 ex)
 - [ ] Valider le schéma
+- [ ] Vérifier que error_correction ≥ 25 % du train
 - [ ] Splitter sans fuite
-- [ ] Lancer le fine-tuning LoRA
-- [ ] Tester en chat
+- [ ] Lancer train v3 depuis final
 - [ ] Évaluer sur `pedagogy_dataset_test.jsonl`
-
-## Notes de version (docs)
-
-- `session_opening` ajouté au dataset pédagogique
-- `translation_with_explanation` renforcé (copie exacte + validation)
-- Pipeline local LoRA priorisé sur les exemples OpenAI historiques
+- [ ] Gate perplexité : v3 ≤ 1.2254
+- [ ] Smoke test 5/5 PASS

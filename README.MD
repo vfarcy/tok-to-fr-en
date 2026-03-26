@@ -2,27 +2,36 @@
 
 Projet de génération de datasets JSONL et fine-tuning LoRA pour enseigner le toki pona à des débutants francophones.
 
-## Statut actuel
+## Statut actuel (26 mars 2026)
 
-Le flux recommandé du dépôt est le flux pédagogique:
+Trois runs curriculum complétés. Meilleur adapter : **`qwen25-1.5b-tokipona-unsloth-final`** (perplexité test **1.1897**).
 
-1. Générer un dataset conversationnel avec `generate_pedagogical_dataset.py`
+| Run | Données | Perplexité test |
+|-----|---------|----------------|
+| A (A0,A1) | 6 000 ex | 1.2032 |
+| B (A0,A1,A2) | 8 000 ex | 1.2032 |
+| C/final (all) | 5 000 ex | **1.1897** |
+
+Le flux recommandé du dépôt est le flux pédagogique avec Unsloth :
+
+1. Générer un dataset avec `generate_pedagogical_dataset.py`
 2. Valider le schéma avec `validate_dataset.py`
 3. Splitter sans fuite avec `split_pedagogy_jsonl.py`
-4. Fine-tuner localement avec `train_qwen25_lora.py`
-5. Tester avec `chat_model.py` et benchmarker sur `pedagogy_dataset_test.jsonl`
+4. Fine-tuner avec `train_qwen25_unsloth.py` (Unsloth + FlashAttention)
+5. Évaluer avec `eval_adapter.py` sur `pedagogy_dataset_test.jsonl` (test figé)
+6. Tester interactivement avec `chat_model.py`
 
-Le flux `training_data.jsonl` (paires `prompt/completion`) reste disponible pour des besoins de traduction brute, mais il n'est plus le flux principal.
+Prochaine étape : micro-plan v3 — voir `PLAN_MONTER_D_UN_CRAN_SAME_LLM.md`.
 
 ## Fichiers importants
 
 - `generate_pedagogical_dataset.py`: génération du dataset pédagogique multi-tours
 - `split_pedagogy_jsonl.py`: split train/val/test groupé par paires fr/tok (évite la fuite)
-- `train_qwen25_lora.py`: entraînement LoRA Qwen2.5-1.5B-Instruct
+- `train_qwen25_unsloth.py`: entraînement Unsloth LoRA Qwen2.5-1.5B-Instruct **(script principal)**
+- `eval_adapter.py`: évaluation quantitative (perplexité) sur test set figé
 - `chat_model.py`: chat interactif avec le modèle entraîné
 - `validate_dataset.py`: validation JSONL contre `schema.json`
-- `pedagogy_dataset.jsonl`: dataset pédagogique source
-- `pedagogy_dataset_train.jsonl`, `pedagogy_dataset_val.jsonl`, `pedagogy_dataset_test.jsonl`: splits
+- `pedagogy_dataset_test.jsonl`: test set figé (508 exemples) — **ne jamais régénérer**
 
 ## Obtenir les CSV depuis Tatoeba
 
@@ -130,55 +139,52 @@ python validate_dataset.py --jsonl pedagogy_dataset.jsonl --schema schema.json
 python split_pedagogy_jsonl.py pedagogy_dataset.jsonl
 ```
 
-### 4) Fine-tuning LoRA
-
-```bash
-python train_qwen25_lora.py \
-  --train-file pedagogy_dataset_train.jsonl \
-  --val-file pedagogy_dataset_val.jsonl \
-  --output-dir qwen25-1.5b-tokipona-lora \
-  --epochs 3 \
-  --batch-size 1 \
-  --grad-accum 16 \
-  --max-length 512 \
-  --save-steps 50 \
-  --early-stopping-patience 3
-```
-
-Alternative recommandée avec Unsloth + FlashAttention:
+### 4) Fine-tuning Unsloth LoRA
 
 ```bash
 python train_qwen25_unsloth.py \
   --train-file pedagogy_dataset_train.jsonl \
   --val-file pedagogy_dataset_val.jsonl \
-  --output-dir qwen25-1.5b-tokipona-unsloth-v1 \
+  --output-dir qwen25-1.5b-tokipona-unsloth-v3 \
   --epochs 3 \
   --max-length 384 \
   --batch-size 2 \
   --grad-accum 8 \
-  --save-steps 200
+  --save-steps 200 \
+  --early-stopping-patience 3
 ```
 
-Option VRAM réduite:
+Pour continuer depuis le meilleur adapter existant :
 
 ```bash
-python train_qwen25_lora.py \
+python train_qwen25_unsloth.py \
   --train-file pedagogy_dataset_train.jsonl \
   --val-file pedagogy_dataset_val.jsonl \
-  --output-dir qwen25-1.5b-tokipona-lora \
+  --output-dir qwen25-1.5b-tokipona-unsloth-v3 \
   --epochs 3 \
-  --batch-size 1 \
-  --grad-accum 16 \
-  --max-length 512 \
-  --save-steps 50 \
+  --max-length 384 \
+  --batch-size 2 \
+  --grad-accum 8 \
+  --save-steps 200 \
   --early-stopping-patience 3 \
-  --load-in-4bit
+  --resume-from-checkpoint qwen25-1.5b-tokipona-unsloth-final
 ```
 
-### 5) Test interactif
+Option VRAM réduite (< 8 GB) : `--batch-size 1 --grad-accum 16`
+
+### 5) Évaluation quantitative
 
 ```bash
-python chat_model.py --adapter qwen25-1.5b-tokipona-lora
+python eval_adapter.py \
+  --adapter qwen25-1.5b-tokipona-unsloth-v3 \
+  --test-file pedagogy_dataset_test.jsonl \
+  --output eval_test_unsloth_v3_metrics.json
+```
+
+### 6) Test interactif
+
+```bash
+python chat_model.py --adapter qwen25-1.5b-tokipona-unsloth-v3
 ```
 
 ## Leçons générées

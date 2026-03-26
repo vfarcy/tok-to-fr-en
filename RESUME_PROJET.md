@@ -1,73 +1,102 @@
 # Résumé Projet
 
+**Date :** 26 mars 2026
+
 ## Objectif
 
-Construire et entraîner un modèle pédagogique de toki pona pour débutants francophones à partir de données Tatoeba, avec un pipeline reproductible de génération JSONL, split sans fuite et fine-tuning LoRA.
+Construire et entraîner un modèle pédagogique de toki pona pour débutants francophones à partir de données Tatoeba, avec un pipeline reproductible de génération JSONL, split sans fuite et fine-tuning LoRA via Unsloth.
 
 ## Architecture actuelle
 
 ### 1) Génération pédagogique
 
-Entrées:
+Entrées : `sentences.csv`, `links.csv`  
+Script : `generate_pedagogical_dataset.py`  
+Sortie : dataset JSONL pédagogique multi-tours
 
-- `sentences.csv`
-- `links.csv`
-
-Sortie:
-
-- `pedagogy_dataset.jsonl`
-
-Le script `generate_pedagogical_dataset.py`:
-
-- reconstruit des paires fr/tok via graphe de liens
-- applique des filtres de qualité
+Le script :
+- reconstruit des paires fr/tok via graphe de liens Tatoeba
+- applique des filtres de qualité sur les phrases
 - génère des dialogues pédagogiques multi-tours
-- produit des métadonnées pédagogiques et qualité
+- produit des métadonnées (`lesson_type`, `level`, `skills`)
 
 ### 2) Validation et split
 
-- validation: `validate_dataset.py --jsonl pedagogy_dataset.jsonl --schema schema.json`
-- split sans fuite: `split_pedagogy_jsonl.py pedagogy_dataset.jsonl`
+```bash
+python validate_dataset.py --jsonl <dataset>.jsonl --schema schema.json
+python split_pedagogy_jsonl.py <dataset>.jsonl
+```
 
-### 3) Fine-tuning local
+Le split `split_pedagogy_jsonl.py` regroupe les exemples par paires fr/tok pour éviter toute fuite entre train et test.
 
-- script: `train_qwen25_lora.py`
-- modèle de base: `Qwen/Qwen2.5-1.5B-Instruct`
-- sortie: dossier adapter LoRA (`qwen25-1.5b-tokipona-lora`)
+### 3) Fine-tuning Unsloth LoRA
 
-## Évolutions importantes intégrées
+Script principal : `train_qwen25_unsloth.py`  
+Modèle de base : `Qwen/Qwen2.5-1.5B-Instruct`  
+Configuration GPU testée : RTX 4070 (11.6 GB VRAM), CUDA 12.8, Torch 2.11.0, FlashAttention 2
 
-1. Conservation checkpoints améliorée (`save_total_limit=3`) pour limiter le risque de perdre le meilleur.
-2. Prompt système de `chat_model.py` aligné avec le prompt système FR du dataset.
-3. Ajout d'exemples `session_opening` pour mieux gérer les débuts de conversation spontanés.
-4. Renforcement de `translation_with_explanation` avec recopie et validation exacte.
+Paramètres recommandés :
+```bash
+python train_qwen25_unsloth.py \
+  --train-file <dataset>_train.jsonl \
+  --val-file <dataset>_val.jsonl \
+  --output-dir <adapter_dir> \
+  --epochs 3 --max-length 384 --batch-size 2 --grad-accum 8 \
+  --save-steps 200 --early-stopping-patience 3
+```
+
+### 4) Évaluation
+
+Script : `eval_adapter.py`  
+Test set figé : `pedagogy_dataset_test.jsonl` (508 exemples)
+
+```bash
+python eval_adapter.py \
+  --adapter <adapter_dir> \
+  --test-file pedagogy_dataset_test.jsonl \
+  --output eval_test_unsloth_<run>_metrics.json
+```
+
+### 5) Test interactif
+
+```bash
+python chat_model.py --adapter <adapter_dir>
+```
+
+## Résultats des runs curriculum
+
+| Run | Dataset | Adapter | Perplexité |
+|-----|---------|---------|-----------|
+| A | A0,A1 — 6 000 ex | `qwen25-1.5b-tokipona-unsloth-A01` | 1.2032 |
+| B | A0,A1,A2 — 8 000 ex | `qwen25-1.5b-tokipona-unsloth-A012` | 1.2032 |
+| C (final) | all levels — 5 000 ex | `qwen25-1.5b-tokipona-unsloth-final` | **1.1897** |
+
+Meilleur adapter : `qwen25-1.5b-tokipona-unsloth-final`
 
 ## Types de leçons générées
 
-- `guided_dialogue`
-- `pattern_drill`
-- `error_correction`
-- `review_recap`
-- `translation_with_explanation`
-- `session_opening`
+- `guided_dialogue` — dialogue guidé débutant
+- `pattern_drill` — réflexe sur un patron syntaxique
+- `error_correction` — correction explicite d'une erreur fréquente
+- `review_recap` — récapitulatif de session
+- `translation_with_explanation` — traduction avec explication de structure
+- `session_opening` — accueil et orientation débutant en début de conversation
 
-## État d'évaluation (modèle actuel avant nouveau retrain)
+## Défaut connu (v3)
 
-Benchmark complet observé sur `pedagogy_dataset_test.jsonl`:
+Le modèle final peut proposer `"mi tawa li tomo"` comme correction dans certains cas — structure agrammaticale en toki pona.  
+Correctif prévu : augmentation des exemples `error_correction` sur structures de lieu/mouvement dans le dataset v3.
 
-- exact match global: ~83%
-- similarité moyenne: ~99%
-- excellent sur 4 formats fermés
-- principal écart: `translation_with_explanation` (variantes de traduction)
+## État d'évaluation
 
-Ce constat a motivé la mise à jour du générateur pour contraindre davantage ce type.
+Métriques enregistrées dans :
+- `eval_test_unsloth_A01_metrics.json`
+- `eval_test_unsloth_A012_metrics.json`
+- `eval_test_unsloth_final_metrics.json`
 
 ## Recommandation opérationnelle
 
-Toujours relancer un cycle complet après changement de générateur:
-
-1. régénérer dataset
-2. revalider schéma
-3. resplit sans fuite
-4. relancer fine-tuning
-5. rebench sur test set
+Suivre le micro-plan v3 dans `PLAN_MONTER_D_UN_CRAN_SAME_LLM.md` :
+1. Régénérer dataset v3 (seed 100, all levels, 6 000 ex, ≥25% error_correction)
+2. Renforcer le prompt système sur les corrections
+3. Passer le smoke test 5 prompts fixes avant tout nouveau run

@@ -72,89 +72,93 @@ ls -lh sentences.csv links.csv
 python generate_pedagogical_dataset.py \
   --sentences sentences.csv \
   --links links.csv \
-  --output pedagogy_dataset.jsonl \
+  --output pedagogy_dataset_v3.jsonl \
   --depth 3 \
-  --max-samples 5000
+  --max-samples 6000 \
+  --level all \
+  --seed 100
 ```
 
 ### 2) Valider le JSONL contre le schéma
 
 ```bash
-python validate_dataset.py --jsonl pedagogy_dataset.jsonl --schema schema.json
+python validate_dataset.py --jsonl pedagogy_dataset_v3.jsonl --schema schema.json
 ```
 
 ### 3) Split train/val/test sans fuite
 
 ```bash
-python split_pedagogy_jsonl.py pedagogy_dataset.jsonl
+python split_pedagogy_jsonl.py pedagogy_dataset_v3.jsonl
 ```
 
-Fichiers produits:
+Fichiers produits :
 
-- `pedagogy_dataset_train.jsonl`
-- `pedagogy_dataset_val.jsonl`
-- `pedagogy_dataset_test.jsonl`
+- `pedagogy_dataset_v3_train.jsonl`
+- `pedagogy_dataset_v3_val.jsonl`
+- `pedagogy_dataset_v3_test.jsonl`
 
-### 4) Lancer le fine-tuning LoRA
-
-```bash
-python train_qwen25_lora.py \
-  --train-file pedagogy_dataset_train.jsonl \
-  --val-file pedagogy_dataset_val.jsonl \
-  --output-dir qwen25-1.5b-tokipona-lora \
-  --epochs 3 \
-  --batch-size 1 \
-  --grad-accum 16 \
-  --max-length 512 \
-  --save-steps 50 \
-  --early-stopping-patience 3
-```
-
-Option 4-bit (si VRAM limite): ajouter `--load-in-4bit`.
-
-Commande recommandée avec Unsloth + FlashAttention:
+### 4) Lancer le fine-tuning Unsloth LoRA
 
 ```bash
 python train_qwen25_unsloth.py \
-  --train-file pedagogy_dataset_train.jsonl \
-  --val-file pedagogy_dataset_val.jsonl \
-  --output-dir qwen25-1.5b-tokipona-unsloth-v1 \
+  --train-file pedagogy_dataset_v3_train.jsonl \
+  --val-file pedagogy_dataset_v3_val.jsonl \
+  --output-dir qwen25-1.5b-tokipona-unsloth-v3 \
   --epochs 3 \
   --max-length 384 \
   --batch-size 2 \
   --grad-accum 8 \
-  --save-steps 200
+  --save-steps 200 \
+  --early-stopping-patience 3 \
+  --resume-from-checkpoint qwen25-1.5b-tokipona-unsloth-final
 ```
 
-### 5) Tester en chat
+Si VRAM limitée (< 8 GB) : remplacer `--batch-size 2` par `--batch-size 1 --grad-accum 16`.
+
+### 5) Évaluer sur le test set figé
 
 ```bash
-python chat_model.py --adapter qwen25-1.5b-tokipona-lora
+python eval_adapter.py \
+  --adapter qwen25-1.5b-tokipona-unsloth-v3 \
+  --test-file pedagogy_dataset_test.jsonl \
+  --output eval_test_unsloth_v3_metrics.json
 ```
 
-### 6) Évaluer sur le test set
+Référence actuelle : perplexité **1.1897** (adapter final). Le run v3 doit rester ≤ **1.2254** (gate +3%).
 
-Recommandé: benchmark génération vs réponse attendue sur `pedagogy_dataset_test.jsonl`.
+### 6) Tester en chat (smoke test 5 prompts fixes)
+
+```bash
+python chat_model.py --adapter qwen25-1.5b-tokipona-unsloth-v3
+```
+
+Prompts à tester dans l'ordre (voir `PLAN_MONTER_D_UN_CRAN_SAME_LLM.md` pour le protocole complet) :
+1. `bonjour, je veux apprendre le toki pona`
+2. `comment dit-on "je mange" en toki pona ?`
+3. `j'ai dit "mi tawa li tomo", c'est correct ?` **(vali dation correction agrammaticale)**
+4. `traduis : "tu es bon"`
+5. `récapitule ce qu'on a vu`
 
 ## Points à connaître
 
 - Le split pédagogique (`split_pedagogy_jsonl.py`) est obligatoire pour éviter la fuite entre exemples proches.
-- Le générateur pédagogique inclut maintenant des exemples `session_opening` pour gérer les messages du type "je veux apprendre le toki pona".
-- `translation_with_explanation` a été renforcé pour mieux stabiliser la forme exacte de traduction.
+- `pedagogy_dataset_test.jsonl` est **figé** : ne jamais le régénérer, tous les runs sont comparés sur ce même test.
+- Le script principal est `train_qwen25_unsloth.py` (Unsloth + FlashAttention).
+- L'adapter de référence est `qwen25-1.5b-tokipona-unsloth-final` (perplexité 1.1897).
 
 ## Vérifications rapides
 
 ```bash
-wc -l pedagogy_dataset.jsonl
-wc -l pedagogy_dataset_train.jsonl pedagogy_dataset_val.jsonl pedagogy_dataset_test.jsonl
+wc -l pedagogy_dataset_v3.jsonl
+wc -l pedagogy_dataset_v3_train.jsonl pedagogy_dataset_v3_val.jsonl pedagogy_dataset_v3_test.jsonl
 ```
 
 ## Si vous reprenez un run interrompu
 
 ```bash
-python train_qwen25_lora.py \
-  --train-file pedagogy_dataset_train.jsonl \
-  --val-file pedagogy_dataset_val.jsonl \
-  --output-dir qwen25-1.5b-tokipona-lora \
-  --resume-from-checkpoint qwen25-1.5b-tokipona-lora/checkpoint-XXXX
+python train_qwen25_unsloth.py \
+  --train-file pedagogy_dataset_v3_train.jsonl \
+  --val-file pedagogy_dataset_v3_val.jsonl \
+  --output-dir qwen25-1.5b-tokipona-unsloth-v3 \
+  --resume-from-checkpoint qwen25-1.5b-tokipona-unsloth-v3/checkpoint-XXXX
 ```
