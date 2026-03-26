@@ -1,0 +1,9 @@
+{
+  "adapter": "qwen25-1.5b-tokipona-unsloth-A012",
+  "base_model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "test_file": "pedagogy_dataset_test.jsonl",
+  "num_examples": 508,
+  "avg_loss": 0.18500131295304598,
+  "perplexity": 1.2032200198980485,
+  "evaluated_tokens": 85384
+}
